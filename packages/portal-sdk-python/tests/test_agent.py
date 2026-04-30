@@ -199,3 +199,73 @@ def test_error_without_item_id(setup_env: dict[str, Path]) -> None:
 
     payload = json.loads(out.getvalue().strip().split("\n")[-1])
     assert payload == {"type": "error", "msg": "global crash", "retryable": True}
+
+
+def test_result_event(setup_env: dict[str, Path]) -> None:
+    out = io.StringIO()
+    agent = Agent(stdout=out)
+
+    # имитируем что агент написал артефакты
+    (agent.output_dir / "report.docx").write_bytes(b"fake docx")
+    (agent.output_dir / "summary.json").write_text("{}")
+
+    agent.result(artifacts=[
+        {"id": "report", "path": "report.docx"},
+        {"id": "summary", "path": "summary.json"},
+    ])
+
+    payload = json.loads(out.getvalue().strip().split("\n")[-1])
+    assert payload["type"] == "result"
+    assert len(payload["artifacts"]) == 2
+    assert payload["artifacts"][0]["id"] == "report"
+
+
+def test_result_artifact_path_must_exist(setup_env: dict[str, Path]) -> None:
+    agent = Agent(stdout=io.StringIO())
+
+    with pytest.raises(FileNotFoundError) as exc:
+        agent.result(artifacts=[{"id": "report", "path": "nonexistent.docx"}])
+
+    assert "nonexistent" in str(exc.value)
+
+
+def test_double_result_raises(setup_env: dict[str, Path]) -> None:
+    agent = Agent(stdout=io.StringIO())
+    (agent.output_dir / "x.txt").write_text("x")
+
+    agent.result(artifacts=[{"id": "x", "path": "x.txt"}])
+
+    with pytest.raises(RuntimeError):
+        agent.result(artifacts=[{"id": "x", "path": "x.txt"}])
+
+
+def test_failed_event(setup_env: dict[str, Path]) -> None:
+    out = io.StringIO()
+    agent = Agent(stdout=out)
+
+    agent.failed("crashed", details="traceback...")
+
+    payload = json.loads(out.getvalue().strip().split("\n")[-1])
+    assert payload == {"type": "failed", "msg": "crashed", "details": "traceback..."}
+
+
+def test_failed_blocks_subsequent_calls(setup_env: dict[str, Path]) -> None:
+    agent = Agent(stdout=io.StringIO())
+    agent.failed("oops")
+
+    with pytest.raises(RuntimeError):
+        agent.progress(0.5)
+
+
+def test_progress_after_result_raises(setup_env: dict[str, Path]) -> None:
+    """Любой метод после result даёт RuntimeError."""
+    agent = Agent(stdout=io.StringIO())
+    (agent.output_dir / "x.txt").write_text("x")
+    agent.result(artifacts=[{"id": "x", "path": "x.txt"}])
+
+    with pytest.raises(RuntimeError):
+        agent.log("info", "после result нельзя")
+    with pytest.raises(RuntimeError):
+        agent.item_done("y")
+    with pytest.raises(RuntimeError):
+        agent.error("крах")

@@ -13,11 +13,14 @@ from typing import IO, Any
 from pydantic import BaseModel
 
 from portal_sdk.events import (
+    Artifact,
     ErrorEvent,
+    FailedEvent,
     ItemDoneEvent,
     LogEvent,
     LogLevel,
     ProgressEvent,
+    ResultEvent,
     StartedEvent,
 )
 
@@ -83,11 +86,15 @@ class Agent:
 
     def progress(self, value: float, label: str | None = None) -> None:
         """Числовой прогресс 0..1 + опциональная подпись."""
+        if self._finished:
+            raise RuntimeError("Агент уже завершён, события не принимаются.")
         clamped = max(0.0, min(1.0, value))
         self._emit(ProgressEvent(value=clamped, label=label))
 
     def log(self, level: str, msg: str) -> None:
         """Сообщение в общую ленту задачи. level: debug|info|warn|error."""
+        if self._finished:
+            raise RuntimeError("Агент уже завершён, события не принимаются.")
         self._emit(LogEvent(level=LogLevel(level), msg=msg))
 
     def item_done(
@@ -97,11 +104,53 @@ class Agent:
         data: dict[str, Any] | None = None,
     ) -> None:
         """Завершение одного элемента в серии (например, одной работы из 46)."""
+        if self._finished:
+            raise RuntimeError("Агент уже завершён, события не принимаются.")
         self._emit(ItemDoneEvent(id=item_id, summary=summary, data=data))
 
     def error(self, msg: str, item_id: str | None = None, retryable: bool = True) -> None:
         """Нефатальная ошибка по конкретному элементу. Агент продолжает."""
+        if self._finished:
+            raise RuntimeError("Агент уже завершён, события не принимаются.")
         self._emit(ErrorEvent(id=item_id, msg=msg, retryable=retryable))
+
+    def result(self, artifacts: list[dict[str, str]]) -> None:
+        """Финальное событие успеха.
+
+        artifacts: list[dict] — каждый dict содержит ключи 'id' и 'path'
+        (path относительно output_dir). SDK проверяет существование файлов.
+        """
+        if self._finished:
+            raise RuntimeError("Агент уже завершён (result/failed уже отправлен).")
+
+        normalized = [self._normalize_artifact(a) for a in artifacts]
+
+        # Проверка существования
+        for art in normalized:
+            full = self._output_dir / art.path
+            if not full.is_file():
+                raise FileNotFoundError(
+                    f"Артефакт '{art.id}' не найден: {full}. "
+                    "Перед result() надо записать файл в output_dir."
+                )
+
+        self._emit(ResultEvent(artifacts=normalized))
+        self._finished = True
+
+    def failed(self, msg: str, details: str | None = None) -> None:
+        """Финальное событие неуспеха."""
+        if self._finished:
+            raise RuntimeError("Агент уже завершён.")
+        self._emit(FailedEvent(msg=msg, details=details))
+        self._finished = True
+
+    def _normalize_artifact(self, a: dict[str, str]) -> Artifact:
+        if not isinstance(a, dict):
+            raise TypeError(
+                "artifacts должны быть list[dict] вида [{'id': ..., 'path': ...}], "
+                f"получено: {a!r}"
+            )
+        return Artifact(**a)
 
     # --- Внутреннее ---
 
