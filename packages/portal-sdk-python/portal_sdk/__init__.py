@@ -1,4 +1,5 @@
 """SDK для агентов платформы AI-агентов кафедры МИРЭА."""
+from portal_sdk.agent import Agent
 from portal_sdk.events import (
     Artifact,
     ErrorEvent,
@@ -40,6 +41,7 @@ from portal_sdk.manifest import (
 __version__ = "0.1.0"
 
 __all__ = [
+    "Agent",
     "Artifact",
     "CategoryStrict",
     "CheckboxField",
