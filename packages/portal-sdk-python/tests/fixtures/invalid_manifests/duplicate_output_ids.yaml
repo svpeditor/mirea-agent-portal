@@ -1,0 +1,18 @@
+id: dup-out
+name: "Дубль outputs"
+version: "1.0.0"
+category: "научная-работа"
+short_description: "Тест дублей output.id"
+outputs:
+  - id: report
+    type: docx
+    label: "A"
+    filename: "a.docx"
+  - id: report
+    type: pdf
+    label: "B"
+    filename: "b.pdf"
+runtime:
+  docker:
+    base_image: "python:3.12-slim"
+    entrypoint: ["python", "x.py"]
