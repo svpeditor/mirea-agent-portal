@@ -5,9 +5,9 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from portal_api.core.security import hash_password
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from portal_api.core.security import hash_password
 from portal_api.models import Invite, User
 
 
@@ -29,7 +29,7 @@ class UserFactory:
     ) -> User:
         cls._counter += 1
         if email is None:
-            email = f"user{cls._counter}-{secrets.token_hex(4)}@test.local"
+            email = f"user{cls._counter}-{secrets.token_hex(4)}@example.com"
         user = User(
             email=email.lower(),
             password_hash=hash_password(password),
@@ -56,7 +56,7 @@ class InviteFactory:
         used_by: User | None = None,
     ) -> Invite:
         if email is None:
-            email = f"invitee-{secrets.token_hex(4)}@test.local"
+            email = f"invitee-{secrets.token_hex(4)}@example.com"
         if token is None:
             token = secrets.token_urlsafe(32)
         if expires_at is None:
