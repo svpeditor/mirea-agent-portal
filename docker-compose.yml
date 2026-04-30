@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: portal
+      POSTGRES_USER: portal
+      POSTGRES_PASSWORD: portal
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U portal"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "127.0.0.1:5433:5432"
+
+  api:
+    build: ./apps/portal-api
+    environment:
+      DATABASE_URL: postgresql+asyncpg://portal:portal@postgres:5432/portal
+      JWT_SECRET: ${JWT_SECRET}
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD}
+      ALLOWED_ORIGINS: '["http://localhost:3000","http://localhost:8000"]'
+      COOKIE_SECURE: "false"
+      ENVIRONMENT: ${ENVIRONMENT:-dev}
+      RELOAD: ${RELOAD:-}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./apps/portal-api:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
