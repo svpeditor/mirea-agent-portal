@@ -12,7 +12,7 @@ from portal_api.bootstrap import bootstrap_admin
 from portal_api.config import get_settings
 from portal_api.core.exceptions import AppError
 from portal_api.db import get_sessionmaker
-from portal_api.routers import auth, health, me
+from portal_api.routers import admin_users, auth, health, me
 
 
 @asynccontextmanager
@@ -55,3 +55,4 @@ async def validation_handler(request: Request, exc: RequestValidationError) -> J
 app.include_router(health.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(me.router, prefix="/api")
+app.include_router(admin_users.router, prefix="/api")
