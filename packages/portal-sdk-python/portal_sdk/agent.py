@@ -10,6 +10,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import IO, Any
 
+from pydantic import BaseModel
+
 from portal_sdk.events import (
     ErrorEvent,
     ItemDoneEvent,
@@ -97,13 +99,13 @@ class Agent:
         """Завершение одного элемента в серии (например, одной работы из 46)."""
         self._emit(ItemDoneEvent(id=item_id, summary=summary, data=data))
 
-    def error(self, item_id: str | None, msg: str, retryable: bool = True) -> None:
+    def error(self, msg: str, item_id: str | None = None, retryable: bool = True) -> None:
         """Нефатальная ошибка по конкретному элементу. Агент продолжает."""
         self._emit(ErrorEvent(id=item_id, msg=msg, retryable=retryable))
 
     # --- Внутреннее ---
 
-    def _emit(self, event: Any) -> None:
+    def _emit(self, event: BaseModel) -> None:
         line = event.model_dump_json(exclude_none=True)
         self._stdout.write(line + "\n")
         self._stdout.flush()

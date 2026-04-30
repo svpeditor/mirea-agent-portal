@@ -175,7 +175,7 @@ def test_error_event(setup_env: dict[str, Path]) -> None:
     out = io.StringIO()
     agent = Agent(stdout=out)
 
-    agent.error(item_id="03", msg="нет файла презентации", retryable=False)
+    agent.error("нет файла презентации", item_id="03", retryable=False)
 
     payload = json.loads(out.getvalue().strip().split("\n")[-1])
     assert payload == {"type": "error", "id": "03", "msg": "нет файла презентации", "retryable": False}
@@ -185,7 +185,17 @@ def test_started_event_at_init(setup_env: dict[str, Path]) -> None:
     out = io.StringIO()
     Agent(stdout=out)
 
-    line = out.getvalue().strip()
+    line = out.getvalue().strip().split("\n")[0]
     payload = json.loads(line)
     assert payload["type"] == "started"
     assert "ts" in payload
+
+
+def test_error_without_item_id(setup_env: dict[str, Path]) -> None:
+    out = io.StringIO()
+    agent = Agent(stdout=out)
+
+    agent.error("global crash")
+
+    payload = json.loads(out.getvalue().strip().split("\n")[-1])
+    assert payload == {"type": "error", "msg": "global crash", "retryable": True}
