@@ -1,5 +1,6 @@
 """Общие фикстуры для тестов SDK."""
 from pathlib import Path
+
 import pytest
 
 
