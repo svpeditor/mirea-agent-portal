@@ -16,7 +16,7 @@ class LogLevel(StrEnum):
 
 
 class _EventBase(BaseModel):
-    model_config = ConfigDict(extra="forbid", use_enum_values=True)
+    model_config = ConfigDict(extra="forbid")
 
 
 class StartedEvent(_EventBase):

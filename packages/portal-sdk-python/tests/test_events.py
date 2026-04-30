@@ -4,11 +4,14 @@ import json
 import pytest
 from pydantic import ValidationError
 
+from portal_sdk.events import Event as _Event  # smoke: проверяем что публичный реэкспорт работает
 from portal_sdk.events import (
-    Event,  # noqa: F401  — public API smoke-import
     LogLevel,
     parse_event_line,
 )
+
+# smoke: убеждаемся что Event публично доступен (не только через Annotated)
+assert _Event is not None
 
 
 def test_started_event_serializes() -> None:
