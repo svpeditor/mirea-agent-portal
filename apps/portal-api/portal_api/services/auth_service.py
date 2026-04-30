@@ -1,4 +1,4 @@
-# ruff: noqa: RUF003
+# ruff: noqa: RUF002, RUF003
 """Бизнес-логика auth: register / login / refresh / logout."""
 from __future__ import annotations
 
@@ -12,6 +12,8 @@ from portal_api.core.exceptions import (
     EmailAlreadyExists,
     InvalidCredentials,
     InviteInvalid,
+    RefreshInvalid,
+    RefreshReuseDetected,
 )
 from portal_api.core.security import (
     create_access_token,
@@ -132,3 +134,67 @@ async def logout(db: AsyncSession, raw_refresh: str | None) -> None:
         .where(RefreshToken.token_hash == h, RefreshToken.revoked_at.is_(None))
         .values(revoked_at=datetime.now(UTC))
     )
+
+
+async def refresh(
+    db: AsyncSession,
+    raw_refresh: str | None,
+    *,
+    user_agent: str | None,
+    ip: str | None,
+) -> tuple[User, str, str]:
+    """Ротирует refresh-токен. Возвращает (user, new_access, new_raw_refresh).
+
+    На reuse-attack — revoke все refresh юзера, кидает RefreshReuseDetected.
+    """
+    if not raw_refresh:
+        raise RefreshInvalid()
+
+    h = hash_refresh_token(raw_refresh)
+
+    res = await db.execute(select(RefreshToken).where(RefreshToken.token_hash == h))
+    token = res.scalar_one_or_none()
+    if token is None:
+        raise RefreshInvalid()
+
+    # Reuse-attack: токен существует, но уже revoked
+    if token.revoked_at is not None:
+        await db.execute(
+            update(RefreshToken)
+            .where(
+                RefreshToken.user_id == token.user_id,
+                RefreshToken.revoked_at.is_(None),
+            )
+            .values(revoked_at=datetime.now(UTC))
+        )
+        await db.commit()  # Persist the revoke-all BEFORE raising;
+                           # otherwise get_db rolls it back on exception.
+        raise RefreshReuseDetected()
+
+    if token.expires_at <= datetime.now(UTC):
+        raise RefreshInvalid()
+
+    # Ротация: создаём новый, помечаем старый
+    res2 = await db.execute(select(User).where(User.id == token.user_id))
+    user = res2.scalar_one()
+
+    new_raw, new_hash = generate_refresh_token()
+    settings = get_settings()
+    new_token = RefreshToken(
+        user_id=user.id,
+        token_hash=new_hash,
+        expires_at=datetime.now(UTC) + timedelta(seconds=settings.jwt_refresh_ttl_seconds),
+        user_agent=user_agent,
+        ip=ip,
+    )
+    db.add(new_token)
+    await db.flush()
+
+    await db.execute(
+        update(RefreshToken)
+        .where(RefreshToken.id == token.id)
+        .values(revoked_at=datetime.now(UTC), replaced_by_id=new_token.id)
+    )
+
+    new_access = create_access_token(user_id=str(user.id), role=user.role)
+    return user, new_access, new_raw

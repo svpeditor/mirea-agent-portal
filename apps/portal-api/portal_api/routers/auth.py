@@ -106,3 +106,20 @@ async def logout(
     await auth_service.logout(db, refresh_token)
     _clear_auth_cookies(response)
     return {"status": "ok"}
+
+
+@router.post("/refresh", response_model=AuthResponse)
+async def refresh(
+    request: Request,
+    response: Response,
+    refresh_token: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> AuthResponse:
+    user, access, new_refresh = await auth_service.refresh(
+        db,
+        refresh_token,
+        user_agent=request.headers.get("user-agent"),
+        ip=request.client.host if request.client else None,
+    )
+    _set_auth_cookies(response, access, new_refresh)
+    return AuthResponse(user=UserOut.model_validate(user))
