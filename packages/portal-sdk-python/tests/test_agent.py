@@ -83,3 +83,14 @@ def test_missing_env_raises(monkeypatch: pytest.MonkeyPatch) -> None:
 
     with pytest.raises(KeyError):
         Agent(stdout=io.StringIO())
+
+
+def test_params_file_must_be_dict(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    params_file = tmp_path / "params.json"
+    params_file.write_text("[1, 2, 3]")  # массив, не объект
+    monkeypatch.setenv("PARAMS_FILE", str(params_file))
+    monkeypatch.setenv("INPUT_DIR", str(tmp_path))
+    monkeypatch.setenv("OUTPUT_DIR", str(tmp_path))
+
+    with pytest.raises(TypeError, match="JSON-объект"):
+        Agent(stdout=io.StringIO())

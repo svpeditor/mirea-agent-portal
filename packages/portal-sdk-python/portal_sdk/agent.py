@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import IO, Any
 
@@ -34,7 +35,12 @@ class Agent:
         if not params_file.is_file():
             raise FileNotFoundError(f"PARAMS_FILE не найден: {params_file}")
 
-        self._params: dict[str, Any] = json.loads(params_file.read_text(encoding="utf-8"))
+        raw = json.loads(params_file.read_text(encoding="utf-8"))
+        if not isinstance(raw, dict):
+            raise TypeError(
+                f"PARAMS_FILE должен содержать JSON-объект, получен {type(raw).__name__}."
+            )
+        self._params: dict[str, Any] = raw
 
     @property
     def params(self) -> dict[str, Any]:
@@ -57,6 +63,6 @@ class Agent:
         return self._output_dir
 
     @property
-    def env(self) -> os._Environ[str]:
+    def env(self) -> MutableMapping[str, str]:
         """Прокси к os.environ — для чтения OPENROUTER_API_KEY и других."""
         return os.environ
