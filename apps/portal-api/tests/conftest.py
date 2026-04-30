@@ -80,7 +80,10 @@ async def db(_migrated: None) -> AsyncIterator[AsyncSession]:
     async with engine.connect() as conn:
         trans = await conn.begin()
         session_local = async_sessionmaker(
-            bind=conn, expire_on_commit=False, class_=AsyncSession
+            bind=conn,
+            expire_on_commit=False,
+            class_=AsyncSession,
+            join_transaction_mode="create_savepoint",
         )
         async with session_local() as session:
             try:
@@ -100,7 +103,6 @@ async def client(
     monkeypatch.setenv("BCRYPT_COST_TESTING", "4")
 
     from portal_api.deps import get_db
-
     from portal_api.main import app
 
     async def override_get_db() -> AsyncIterator[AsyncSession]:
