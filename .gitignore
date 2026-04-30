@@ -1,6 +1,9 @@
 # brainstorming артефакты (мокапы из docs/superpowers/mockups/ коммитим — они не здесь)
 .superpowers/
 
+# git worktrees для параллельной работы над планами
+.worktrees/
+
 # Python
 __pycache__/
 *.py[cod]
