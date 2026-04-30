@@ -1,0 +1,1 @@
+# requirements.txt — для local_runner не используется (используется venv текущего процесса)
