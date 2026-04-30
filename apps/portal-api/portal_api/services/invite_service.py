@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import secrets
+import uuid
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select, update
@@ -84,3 +85,27 @@ async def create_invite(
     db.add(invite)
     await db.flush()
     return invite
+
+
+async def list_invites(db: AsyncSession, *, status: str = "all") -> list[Invite]:
+    stmt = select(Invite).order_by(Invite.created_at.desc())
+    now = datetime.now(UTC)
+    if status == "active":
+        stmt = stmt.where(Invite.used_at.is_(None), Invite.expires_at > now)
+    elif status == "used":
+        stmt = stmt.where(Invite.used_at.is_not(None))
+    elif status == "expired":
+        stmt = stmt.where(Invite.used_at.is_(None), Invite.expires_at <= now)
+    res = await db.execute(stmt)
+    return list(res.scalars().all())
+
+
+async def cancel_invite(db: AsyncSession, invite_id: uuid.UUID, *, by_admin: User) -> None:
+    invite = await db.get(Invite, invite_id)
+    if invite is None:
+        raise InviteInvalid("Приглашение не найдено.")
+    if invite.used_at is not None:
+        return  # идемпотентно
+    invite.used_at = datetime.now(UTC)
+    invite.used_by_user_id = by_admin.id
+    await db.flush()
