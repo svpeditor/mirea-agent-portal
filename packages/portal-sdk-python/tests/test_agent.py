@@ -94,3 +94,98 @@ def test_params_file_must_be_dict(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
 
     with pytest.raises(TypeError, match="JSON-объект"):
         Agent(stdout=io.StringIO())
+
+
+def test_progress_writes_ndjson(setup_env: dict[str, Path]) -> None:
+    out = io.StringIO()
+    agent = Agent(stdout=out)
+
+    agent.progress(0.25, "Quarter")
+
+    line = out.getvalue().strip().split("\n")[-1]
+    assert "\n" not in line
+    payload = json.loads(line)
+    assert payload == {"type": "progress", "value": 0.25, "label": "Quarter"}
+
+
+def test_progress_without_label(setup_env: dict[str, Path]) -> None:
+    out = io.StringIO()
+    agent = Agent(stdout=out)
+
+    agent.progress(0.5)
+
+    payload = json.loads(out.getvalue().strip().split("\n")[-1])
+    assert payload == {"type": "progress", "value": 0.5}
+
+
+def test_progress_value_clamped(setup_env: dict[str, Path]) -> None:
+    out = io.StringIO()
+    agent = Agent(stdout=out)
+
+    agent.progress(1.5)
+    agent.progress(-0.1)
+
+    lines = out.getvalue().strip().split("\n")
+    # [0] = started, [1] = clamped 1.0, [2] = clamped 0.0
+    assert json.loads(lines[1])["value"] == 1.0
+    assert json.loads(lines[2])["value"] == 0.0
+
+
+def test_log_writes_ndjson(setup_env: dict[str, Path]) -> None:
+    out = io.StringIO()
+    agent = Agent(stdout=out)
+
+    agent.log("info", "started processing")
+
+    payload = json.loads(out.getvalue().strip().split("\n")[-1])
+    assert payload == {"type": "log", "level": "info", "msg": "started processing"}
+
+
+def test_log_invalid_level_raises(setup_env: dict[str, Path]) -> None:
+    agent = Agent(stdout=io.StringIO())
+
+    with pytest.raises(ValueError):
+        agent.log("YELL", "msg")
+
+
+def test_item_done(setup_env: dict[str, Path]) -> None:
+    out = io.StringIO()
+    agent = Agent(stdout=out)
+
+    agent.item_done("01", summary="ok", data={"verdict": "approve"})
+
+    payload = json.loads(out.getvalue().strip().split("\n")[-1])
+    assert payload["type"] == "item_done"
+    assert payload["id"] == "01"
+    assert payload["summary"] == "ok"
+    assert payload["data"] == {"verdict": "approve"}
+
+
+def test_item_done_minimal(setup_env: dict[str, Path]) -> None:
+    out = io.StringIO()
+    agent = Agent(stdout=out)
+
+    agent.item_done("02")
+
+    payload = json.loads(out.getvalue().strip().split("\n")[-1])
+    assert payload == {"type": "item_done", "id": "02"}
+
+
+def test_error_event(setup_env: dict[str, Path]) -> None:
+    out = io.StringIO()
+    agent = Agent(stdout=out)
+
+    agent.error(item_id="03", msg="нет файла презентации", retryable=False)
+
+    payload = json.loads(out.getvalue().strip().split("\n")[-1])
+    assert payload == {"type": "error", "id": "03", "msg": "нет файла презентации", "retryable": False}
+
+
+def test_started_event_at_init(setup_env: dict[str, Path]) -> None:
+    out = io.StringIO()
+    Agent(stdout=out)
+
+    line = out.getvalue().strip()
+    payload = json.loads(line)
+    assert payload["type"] == "started"
+    assert "ts" in payload
