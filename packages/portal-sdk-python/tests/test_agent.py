@@ -269,3 +269,21 @@ def test_progress_after_result_raises(setup_env: dict[str, Path]) -> None:
         agent.item_done("y")
     with pytest.raises(RuntimeError):
         agent.error("крах")
+
+
+def test_result_rejects_path_traversal(setup_env: dict[str, Path], tmp_path: Path) -> None:
+    """result() не должен разрешать путь вне output_dir."""
+    agent = Agent(stdout=io.StringIO())
+    # создаём файл вне output_dir но внутри tmp_path
+    outside = tmp_path / "secret.txt"
+    outside.write_text("secret")
+
+    with pytest.raises(ValueError, match="выходит за пределы"):
+        agent.result(artifacts=[{"id": "x", "path": "../secret.txt"}])
+
+
+def test_result_empty_artifacts_rejected(setup_env: dict[str, Path]) -> None:
+    agent = Agent(stdout=io.StringIO())
+
+    with pytest.raises(ValueError, match="пустым списком"):
+        agent.result(artifacts=[])

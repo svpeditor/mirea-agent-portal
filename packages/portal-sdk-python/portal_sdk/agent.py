@@ -24,6 +24,8 @@ from portal_sdk.events import (
     StartedEvent,
 )
 
+_FINISHED_MSG = "Агент уже завершён (result/failed уже отправлен)."
+
 
 class Agent:
     """Обёртка над контрактом портала.
@@ -87,14 +89,14 @@ class Agent:
     def progress(self, value: float, label: str | None = None) -> None:
         """Числовой прогресс 0..1 + опциональная подпись."""
         if self._finished:
-            raise RuntimeError("Агент уже завершён, события не принимаются.")
+            raise RuntimeError(_FINISHED_MSG)
         clamped = max(0.0, min(1.0, value))
         self._emit(ProgressEvent(value=clamped, label=label))
 
     def log(self, level: str, msg: str) -> None:
         """Сообщение в общую ленту задачи. level: debug|info|warn|error."""
         if self._finished:
-            raise RuntimeError("Агент уже завершён, события не принимаются.")
+            raise RuntimeError(_FINISHED_MSG)
         self._emit(LogEvent(level=LogLevel(level), msg=msg))
 
     def item_done(
@@ -105,13 +107,13 @@ class Agent:
     ) -> None:
         """Завершение одного элемента в серии (например, одной работы из 46)."""
         if self._finished:
-            raise RuntimeError("Агент уже завершён, события не принимаются.")
+            raise RuntimeError(_FINISHED_MSG)
         self._emit(ItemDoneEvent(id=item_id, summary=summary, data=data))
 
     def error(self, msg: str, item_id: str | None = None, retryable: bool = True) -> None:
         """Нефатальная ошибка по конкретному элементу. Агент продолжает."""
         if self._finished:
-            raise RuntimeError("Агент уже завершён, события не принимаются.")
+            raise RuntimeError(_FINISHED_MSG)
         self._emit(ErrorEvent(id=item_id, msg=msg, retryable=retryable))
 
     def result(self, artifacts: list[dict[str, str]]) -> None:
@@ -121,13 +123,26 @@ class Agent:
         (path относительно output_dir). SDK проверяет существование файлов.
         """
         if self._finished:
-            raise RuntimeError("Агент уже завершён (result/failed уже отправлен).")
+            raise RuntimeError(_FINISHED_MSG)
+        if not artifacts:
+            raise ValueError(
+                "result() вызван с пустым списком артефактов. "  # noqa: RUF001
+                "Добавь хотя бы один файл или используй failed() если нечего вернуть."
+            )
 
         normalized = [self._normalize_artifact(a) for a in artifacts]
 
-        # Проверка существования
+        # Проверка пути и существования файлов
         for art in normalized:
             full = self._output_dir / art.path
+            # Защита от path traversal — путь не должен выходить за output_dir
+            try:
+                full.resolve().relative_to(self._output_dir.resolve())
+            except ValueError:
+                raise ValueError(
+                    f"Путь артефакта '{art.id}' выходит за пределы output_dir: {art.path!r}. "
+                    "Укажи путь относительно output_dir без '..'."
+                ) from None
             if not full.is_file():
                 raise FileNotFoundError(
                     f"Артефакт '{art.id}' не найден: {full}. "
@@ -140,7 +155,7 @@ class Agent:
     def failed(self, msg: str, details: str | None = None) -> None:
         """Финальное событие неуспеха."""
         if self._finished:
-            raise RuntimeError("Агент уже завершён.")
+            raise RuntimeError(_FINISHED_MSG)
         self._emit(FailedEvent(msg=msg, details=details))
         self._finished = True
 
