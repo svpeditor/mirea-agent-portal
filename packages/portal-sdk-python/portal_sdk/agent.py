@@ -1,16 +1,18 @@
-# packages/portal-sdk-python/portal_sdk/agent.py
 """Публичный API SDK — класс Agent."""
+# ruff: noqa: RUF001
 from __future__ import annotations
 
 import json
 import os
 import sys
-from collections.abc import MutableMapping
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
+from types import MappingProxyType
 from typing import IO, Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
+from pydantic_core import PydanticSerializationError
 
 from portal_sdk.events import (
     Artifact,
@@ -81,8 +83,13 @@ class Agent:
         return self._output_dir
 
     @property
-    def env(self) -> MutableMapping[str, str]:
-        return os.environ
+    def env(self) -> Mapping[str, str]:
+        """Read-only view на переменные окружения процесса.
+
+        Read-only намеренно: студент не должен случайно мутировать env
+        агента через SDK — для этого есть `os.environ` напрямую.
+        """
+        return MappingProxyType(os.environ)
 
     # --- События прогресса ---
 
@@ -126,7 +133,7 @@ class Agent:
             raise RuntimeError(_FINISHED_MSG)
         if not artifacts:
             raise ValueError(
-                "result() вызван с пустым списком артефактов. "  # noqa: RUF001
+                "result() вызван с пустым списком артефактов. "
                 "Добавь хотя бы один файл или используй failed() если нечего вернуть."
             )
 
@@ -134,6 +141,13 @@ class Agent:
 
         # Проверка пути и существования файлов
         for art in normalized:
+            # Абсолютные пути запрещены — path должен быть относительным к output_dir
+            if Path(art.path).is_absolute():
+                raise ValueError(
+                    f"Путь артефакта '{art.id}' должен быть относительным к output_dir, "
+                    f"получен абсолютный: {art.path!r}. "
+                    "Пиши путь как имя файла внутри output_dir, например 'report.docx'."
+                )
             full = self._output_dir / art.path
             # Защита от path traversal — путь не должен выходить за output_dir
             try:
@@ -170,6 +184,13 @@ class Agent:
     # --- Внутреннее ---
 
     def _emit(self, event: BaseModel) -> None:
-        line = event.model_dump_json(exclude_none=True)
+        try:
+            line = event.model_dump_json(exclude_none=True)
+        except (TypeError, ValueError, ValidationError, PydanticSerializationError) as e:
+            raise TypeError(
+                f"Поле события {type(event).__name__} не JSON-сериализуемо: {e}. "
+                "В data/summary можно класть только числа, строки, bool, None, "
+                "списки и словари из этих типов. datetime — Pydantic сам сериализует."
+            ) from None
         self._stdout.write(line + "\n")
         self._stdout.flush()

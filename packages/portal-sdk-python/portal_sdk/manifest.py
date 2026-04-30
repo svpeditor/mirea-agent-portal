@@ -205,7 +205,7 @@ class Manifest(BaseModel):
 
     inputs: dict[str, InputField] = Field(default_factory=dict)
     files: dict[str, FileField] = Field(default_factory=dict)
-    outputs: list[OutputField] = Field(default_factory=list)
+    outputs: list[OutputField] = Field(min_length=1)
     runtime: RuntimeConfig
 
     @field_validator("category", mode="before")

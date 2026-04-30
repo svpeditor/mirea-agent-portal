@@ -1,4 +1,5 @@
 """Тесты публичного API класса Agent."""
+# ruff: noqa: RUF002
 import io
 import json
 from pathlib import Path
@@ -287,3 +288,30 @@ def test_result_empty_artifacts_rejected(setup_env: dict[str, Path]) -> None:
 
     with pytest.raises(ValueError, match="пустым списком"):
         agent.result(artifacts=[])
+
+
+def test_result_rejects_absolute_path(setup_env: dict[str, Path]) -> None:
+    """Абсолютный path в artifacts — ошибка с понятным сообщением, не тихий пропуск."""
+    agent = Agent(stdout=io.StringIO())
+    (agent.output_dir / "echo.docx").write_text("x")
+
+    with pytest.raises(ValueError, match="относительным"):
+        agent.result(artifacts=[{"id": "report", "path": str(agent.output_dir / "echo.docx")}])
+
+
+def test_env_is_read_only(setup_env: dict[str, Path]) -> None:
+    """Студент не должен случайно мутировать env родительского процесса через agent.env."""
+    agent = Agent(stdout=io.StringIO())
+    with pytest.raises(TypeError):
+        agent.env["NEW_KEY"] = "value"  # type: ignore[index]
+
+
+def test_item_done_non_json_serializable_data(setup_env: dict[str, Path]) -> None:
+    """Не-JSON-сериализуемое значение в data → TypeError с понятным сообщением."""
+
+    class _CustomObject:
+        pass
+
+    agent = Agent(stdout=io.StringIO())
+    with pytest.raises(TypeError, match="JSON-сериализуем"):
+        agent.item_done("01", data={"obj": _CustomObject()})

@@ -90,6 +90,9 @@ def test_category_unknown_stays_str() -> None:
         "version": "1.0.0",
         "category": "моя-кастомная",
         "short_description": "Описание",
+        "outputs": [
+            {"id": "report", "type": "any", "label": "Результат", "filename": "out.txt"}
+        ],
         "runtime": {
             "docker": {
                 "base_image": "python:3.12-slim",
@@ -116,3 +119,9 @@ def test_two_primaries_rejected(fixtures_dir: Path) -> None:
         Manifest.from_yaml(fixtures_dir / "invalid_manifests" / "two_primaries.yaml")
 
     assert "primary" in str(exc.value).lower()
+
+
+def test_empty_outputs_rejected(fixtures_dir: Path) -> None:
+    """Манифест без outputs — невалиден: агент обязан вернуть хотя бы один артефакт."""
+    with pytest.raises(ValidationError):
+        Manifest.from_yaml(fixtures_dir / "invalid_manifests" / "empty_outputs.yaml")

@@ -1,0 +1,10 @@
+id: empty-outputs
+name: "Пустой outputs"
+version: "1.0.0"
+category: "научная-работа"
+short_description: "Манифест без артефактов"
+outputs: []
+runtime:
+  docker:
+    base_image: "python:3.12-slim"
+    entrypoint: ["python", "x.py"]

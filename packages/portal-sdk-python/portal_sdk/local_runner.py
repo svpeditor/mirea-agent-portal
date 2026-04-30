@@ -45,11 +45,15 @@ def run(
     # Валидируем манифест перед запуском — раньше упадём, если что не так
     manifest = Manifest.from_yaml(agent_dir / "manifest.yaml")
 
-    # Готовим временные input/params файлы рядом с output_dir, чтобы всё видно
+    # Готовим временные input/params файлы рядом с output_dir, чтобы всё видно.
+    # Чистим workspace перед каждым запуском, чтобы старые input-папки и
+    # params от предыдущих прогонов не текли в новый.
     workspace = output_dir.parent / f"{output_dir.name}.workspace"
-    workspace.mkdir(exist_ok=True)
+    if workspace.exists():
+        shutil.rmtree(workspace)
+    workspace.mkdir()
     input_dir = workspace / "input"
-    input_dir.mkdir(exist_ok=True)
+    input_dir.mkdir()
     params_file = workspace / "params.json"
 
     params_file.write_text(json.dumps(params, ensure_ascii=False), encoding="utf-8")
