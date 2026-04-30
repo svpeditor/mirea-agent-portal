@@ -51,7 +51,8 @@ select = ["E", "F", "W", "I", "B", "UP", "C4", "RUF", "SIM", "RET", "N", "S"]
 ignore = ["S101"]  # assert в тестах
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S105", "S106", "S311"]  # хардкод "паролей" и random в тестах OK
+# хардкод "паролей" и random в тестах OK; кириллица в docstring'ах не двусмысленна
+"tests/**" = ["S105", "S106", "S107", "S311", "RUF002", "RUF003"]
 
 [tool.mypy]
 python_version = "3.12"
