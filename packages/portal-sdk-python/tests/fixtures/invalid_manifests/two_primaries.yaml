@@ -1,0 +1,20 @@
+id: two-prim
+name: "Два primary"
+version: "1.0.0"
+category: "научная-работа"
+short_description: "Тест двух primary outputs"
+outputs:
+  - id: a
+    type: docx
+    label: "A"
+    filename: "a.docx"
+    primary: true
+  - id: b
+    type: pdf
+    label: "B"
+    filename: "b.pdf"
+    primary: true
+runtime:
+  docker:
+    base_image: "python:3.12-slim"
+    entrypoint: ["python", "x.py"]

@@ -5,6 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from portal_sdk.manifest import (
+    CategoryStrict,
     CheckboxField,
     FolderFile,
     Manifest,
@@ -73,3 +74,45 @@ def test_missing_id_rejected(fixtures_dir: Path) -> None:
 def test_unknown_input_type_rejected(fixtures_dir: Path) -> None:
     with pytest.raises(ValidationError):
         Manifest.from_yaml(fixtures_dir / "invalid_manifests" / "bad_input_type.yaml")
+
+
+def test_category_known_becomes_enum(fixtures_dir: Path) -> None:
+    manifest = Manifest.from_yaml(fixtures_dir / "proverka_manifest.yaml")
+
+    assert isinstance(manifest.category, CategoryStrict)
+    assert manifest.category == CategoryStrict.SCIENCE
+
+
+def test_category_unknown_stays_str() -> None:
+    data = {
+        "id": "my-agent",
+        "name": "Агент",
+        "version": "1.0.0",
+        "category": "моя-кастомная",
+        "short_description": "Описание",
+        "runtime": {
+            "docker": {
+                "base_image": "python:3.12-slim",
+                "entrypoint": ["python", "run.py"],
+            }
+        },
+    }
+    manifest = Manifest.model_validate(data)
+
+    assert isinstance(manifest.category, str)
+    assert not isinstance(manifest.category, CategoryStrict)
+    assert manifest.category == "моя-кастомная"
+
+
+def test_duplicate_output_ids_rejected(fixtures_dir: Path) -> None:
+    with pytest.raises(ValidationError) as exc:
+        Manifest.from_yaml(fixtures_dir / "invalid_manifests" / "duplicate_output_ids.yaml")
+
+    assert "дубли" in str(exc.value).lower()
+
+
+def test_two_primaries_rejected(fixtures_dir: Path) -> None:
+    with pytest.raises(ValidationError) as exc:
+        Manifest.from_yaml(fixtures_dir / "invalid_manifests" / "two_primaries.yaml")
+
+    assert "primary" in str(exc.value).lower()

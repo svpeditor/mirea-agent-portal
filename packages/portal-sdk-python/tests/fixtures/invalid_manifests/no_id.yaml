@@ -1,6 +1,7 @@
 name: "Без ID"
 version: "1.0.0"
 category: "научная-работа"
+short_description: "Манифест без id"
 runtime:
   docker:
     base_image: "python:3.12-slim"

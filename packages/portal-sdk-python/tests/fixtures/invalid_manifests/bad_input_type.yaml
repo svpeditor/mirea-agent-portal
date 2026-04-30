@@ -2,6 +2,7 @@ id: bad-input
 name: "Неверный тип"
 version: "1.0.0"
 category: "научная-работа"
+short_description: "Манифест с неверным типом поля"
 inputs:
   weird:
     type: foobar

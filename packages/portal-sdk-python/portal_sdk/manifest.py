@@ -91,13 +91,13 @@ class SelectOption(BaseModel):
 
 class SelectField(_BaseField):
     type: Literal[InputType.SELECT]
-    options: list[SelectOption]
+    options: list[SelectOption] = Field(min_length=1)
     default: str | None = None
 
 
 class RadioField(_BaseField):
     type: Literal[InputType.RADIO]
-    options: list[SelectOption]
+    options: list[SelectOption] = Field(min_length=1)
     default: str | None = None
 
 
@@ -166,7 +166,7 @@ class DockerConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     base_image: str
     setup: list[str] = Field(default_factory=list)
-    entrypoint: list[str]
+    entrypoint: list[str] = Field(min_length=1)
 
 
 class LLMConfig(BaseModel):
@@ -196,11 +196,11 @@ class Manifest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: str = Field(min_length=1, pattern=r"^[a-z0-9][a-z0-9-]*$")
-    name: str
-    version: str
+    name: str = Field(min_length=1)
+    version: str = Field(min_length=1)
     category: CategoryStrict | str  # допускаем кастомные категории сверху
     icon: str | None = None
-    short_description: str
+    short_description: str = Field(min_length=1)
     about: str | None = None
 
     inputs: dict[str, InputField] = Field(default_factory=dict)
@@ -208,9 +208,24 @@ class Manifest(BaseModel):
     outputs: list[OutputField] = Field(default_factory=list)
     runtime: RuntimeConfig
 
+    @field_validator("category", mode="before")
+    @classmethod
+    def _coerce_category(cls, v: object) -> object:
+        if isinstance(v, str):
+            try:
+                return CategoryStrict(v)
+            except ValueError:
+                return v  # кастомное значение остаётся строкой
+        return v
+
     @field_validator("outputs")
     @classmethod
-    def _at_most_one_primary(cls, v: list[OutputField]) -> list[OutputField]:
+    def _validate_outputs(cls, v: list[OutputField]) -> list[OutputField]:
+        # Проверка дублей id
+        ids = [o.id for o in v]
+        if len(ids) != len(set(ids)):
+            raise ValueError(f"Дубли output.id: {ids}")
+        # At most one primary
         primaries = sum(1 for o in v if o.primary)
         if primaries > 1:
             raise ValueError("Только один output может быть primary=true")
