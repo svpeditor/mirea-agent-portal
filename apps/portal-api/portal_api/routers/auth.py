@@ -30,7 +30,7 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str)
         key="refresh_token",
         value=refresh_token,
         max_age=settings.jwt_refresh_ttl_seconds,
-        path="/api/auth",
+        path="/api",
         httponly=True,
         secure=settings.cookie_secure,
         samesite="strict",
@@ -50,7 +50,7 @@ def _clear_auth_cookies(response: Response) -> None:
     )
     response.delete_cookie(
         "refresh_token",
-        path="/api/auth",
+        path="/api",
         domain=settings.cookie_domain,
         samesite="strict",
         secure=settings.cookie_secure,
