@@ -1,0 +1,104 @@
+<h2>Что строим в Спеке 1 — «Фундамент платформы»</h2>
+<p class="subtitle">Один спек = публикуем контракт агента + работающий портал-MVP, проверенный сквозь один echo-агент end-to-end. Дальше уже переносим под этот контракт твои реальные агенты — отдельным спеком, отдельной командой.</p>
+
+<style>
+  .arch-row { display: flex; gap: 12px; margin: 0 0 6px 0; align-items: stretch; }
+  .arch-block {
+    flex: 1; padding: 14px 16px; border-radius: 10px;
+    background: rgba(99, 102, 241, 0.10);
+    border: 1.5px solid rgba(99, 102, 241, 0.40);
+    min-width: 0;
+  }
+  .arch-block.user { background: rgba(34, 197, 94, 0.12); border-color: rgba(34, 197, 94, 0.50); }
+  .arch-block.runtime { background: rgba(245, 158, 11, 0.13); border-color: rgba(245, 158, 11, 0.55); }
+  .arch-block.external { background: rgba(244, 114, 182, 0.13); border-color: rgba(244, 114, 182, 0.55); }
+  .arch-block h4 { margin: 0 0 8px 0; font-size: 14.5px; font-weight: 600; }
+  .arch-block ul { margin: 0; padding-left: 18px; font-size: 12.5px; opacity: 0.92; line-height: 1.55; }
+  .arch-block ul li { margin-bottom: 2px; }
+  .arch-block p.note { margin: 0; font-size: 12.5px; opacity: 0.92; line-height: 1.5; }
+  .arch-arrow { text-align: center; opacity: 0.45; margin: 6px 0; font-size: 18px; letter-spacing: 6px; }
+  .legend { display: flex; gap: 16px; margin-top: 22px; font-size: 12px; opacity: 0.78; flex-wrap: wrap; }
+  .legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: middle; }
+</style>
+
+<div class="arch-row">
+  <div class="arch-block user">
+    <h4>👤 Пользователь / Администратор — браузер</h4>
+    <p class="note">Преподаватель кафедры: выбор агента → загрузка файлов → форма параметров → ждёт прогресс → скачивает Word. Админ: управление вкладками, агентами, пользователями.</p>
+  </div>
+</div>
+
+<div class="arch-arrow">↓ HTTPS</div>
+
+<div class="arch-row">
+  <div class="arch-block">
+    <h4>🌐 Frontend</h4>
+    <ul>
+      <li>Главная: 3 вкладки, плитки агентов</li>
+      <li>Страница агента: форма + загрузка файлов/папок</li>
+      <li>Страница задачи: live-прогресс, логи</li>
+      <li>Админка: вкладки, агенты, юзеры</li>
+    </ul>
+  </div>
+  <div class="arch-block">
+    <h4>⚙️ Backend API</h4>
+    <ul>
+      <li>Auth (email + пароль, JWT)</li>
+      <li>Реестр агентов и вкладок</li>
+      <li>CRUD задач (создать / посмотреть / отменить)</li>
+      <li>WebSocket для live-логов и прогресса</li>
+      <li>Раздача артефактов на скачивание</li>
+    </ul>
+  </div>
+</div>
+
+<div class="arch-arrow">↓</div>
+
+<div class="arch-row">
+  <div class="arch-block">
+    <h4>🗄️ Postgres</h4>
+    <ul>
+      <li>users, tabs, agents, agent_versions</li>
+      <li>jobs, job_events, artifacts</li>
+      <li>audit log, usage / лимиты</li>
+    </ul>
+  </div>
+  <div class="arch-block">
+    <h4>📋 Очередь задач</h4>
+    <ul>
+      <li>Job попадает в очередь → воркер берёт</li>
+      <li>Воркер стримит события прогресса в БД и WebSocket</li>
+      <li>Конкурентность настраиваемая</li>
+    </ul>
+  </div>
+  <div class="arch-block runtime">
+    <h4>📦 Агент-Runner (Docker)</h4>
+    <ul>
+      <li>Один контейнер = одна задача (изоляция)</li>
+      <li><code>stdin</code>: JSON c параметрами</li>
+      <li><code>stdout</code>: NDJSON событий</li>
+      <li><code>$IN_DIR</code> / <code>$OUT_DIR</code> — bind-mount</li>
+      <li>Лимиты по CPU / RAM / времени</li>
+    </ul>
+  </div>
+</div>
+
+<div class="arch-arrow">↓</div>
+
+<div class="arch-row">
+  <div class="arch-block external">
+    <h4>🤖 OpenRouter — LLM-gateway</h4>
+    <p class="note">Один ключ портала → агент дёргает Claude / GPT / Gemini / DeepSeek через единый API. Портал ставит лимиты, считает расход, логирует. Студенту не нужен свой ключ.</p>
+  </div>
+  <div class="arch-block external">
+    <h4>📁 Хранилище файлов</h4>
+    <p class="note">MVP — локальная FS на сервере портала. Позже — S3-совместимое (для бэкапа и роста). Загрузки пользователей + артефакты-результаты.</p>
+  </div>
+</div>
+
+<div class="legend">
+  <span><span class="legend-dot" style="background: rgba(34,197,94,0.6);"></span>Пользовательский слой</span>
+  <span><span class="legend-dot" style="background: rgba(99,102,241,0.6);"></span>Ядро портала</span>
+  <span><span class="legend-dot" style="background: rgba(245,158,11,0.7);"></span>Sandbox для агентов</span>
+  <span><span class="legend-dot" style="background: rgba(244,114,182,0.7);"></span>Внешние сервисы</span>
+</div>

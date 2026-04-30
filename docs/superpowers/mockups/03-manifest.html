@@ -1,0 +1,138 @@
+<h2>Манифест агента — на примере proverka</h2>
+<p class="subtitle">Файл <code>manifest.yaml</code> лежит в корне репозитория агента. Портал читает его, чтобы построить форму, навесить лимиты, изолировать запуск.</p>
+
+<style>
+  .manifest-block {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    margin-bottom: 14px;
+    background: rgba(255,255,255,0.03);
+    border: 1.5px solid rgba(255,255,255,0.10);
+    border-radius: 10px; overflow: hidden;
+  }
+  .manifest-block.accent { border-color: rgba(99,102,241,0.45); background: rgba(99,102,241,0.06); }
+  .manifest-block.runtime { border-color: rgba(245,158,11,0.45); background: rgba(245,158,11,0.06); }
+  .manifest-block.outputs { border-color: rgba(34,197,94,0.45); background: rgba(34,197,94,0.06); }
+  .manifest-yaml {
+    padding: 14px 16px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px; line-height: 1.55;
+    background: rgba(0,0,0,0.30); white-space: pre; overflow-x: auto;
+  }
+  .manifest-yaml .key { color: #a5b4fc; }
+  .manifest-yaml .str { color: #86efac; }
+  .manifest-yaml .num { color: #fbbf24; }
+  .manifest-yaml .com { color: #6b7280; font-style: italic; }
+  .manifest-yaml .lit { color: #f9a8d4; }
+  .manifest-explain {
+    padding: 14px 16px; font-size: 12.8px; line-height: 1.6;
+    border-left: 1.5px solid rgba(255,255,255,0.10);
+  }
+  .manifest-explain h4 { margin: 0 0 6px 0; font-size: 13.5px; font-weight: 600; }
+  .manifest-explain p { margin: 0 0 8px 0; opacity: 0.92; }
+  .manifest-explain p:last-child { margin-bottom: 0; }
+  .manifest-explain code { background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 3px; font-size: 11.5px; }
+  .tag { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10.5px; font-weight: 600; margin-right: 4px; }
+  .tag.req { background: rgba(244,63,94,0.18); color: #fda4af; }
+  .tag.opt { background: rgba(148,163,184,0.18); color: #cbd5e1; }
+</style>
+
+<div class="manifest-block accent">
+  <div class="manifest-yaml"><span class="com"># --- ИДЕНТИФИКАЦИЯ ---</span>
+<span class="key">id</span>: <span class="str">school-works-expert</span>
+<span class="key">name</span>: <span class="str">"Эксперт конкурсных работ школьников"</span>
+<span class="key">version</span>: <span class="str">"1.0.0"</span>
+<span class="key">category</span>: <span class="str">"научная-работа"</span>
+<span class="key">icon</span>: <span class="str">"🎓"</span>
+<span class="key">short_description</span>: <span class="str">|
+  Анализирует работы школьников по чек-листу
+  и выдаёт экспертное заключение в Word.</span></div>
+  <div class="manifest-explain">
+    <h4>Идентификация и место в портале</h4>
+    <p><span class="tag req">обязательно</span> <code>id</code> — уникальный slug. По нему версионирование и URL.</p>
+    <p><span class="tag req">обязательно</span> <code>category</code> — одно из значений «научная-работа», «учебная», «организационная». Определяет вкладку.</p>
+    <p><span class="tag opt">опционально</span> <code>icon</code> — emoji или путь к PNG. По умолчанию первая буква названия в кружке.</p>
+    <p><span class="tag req">обязательно</span> <code>short_description</code> — то, что видно на плитке. <code>about</code> ниже — длинная страница «о агенте».</p>
+  </div>
+</div>
+
+<div class="manifest-block">
+  <div class="manifest-yaml"><span class="com"># --- ФОРМА ВВОДА ---</span>
+<span class="key">inputs</span>:
+  <span class="key">section</span>:
+    <span class="key">type</span>: <span class="lit">text</span>
+    <span class="key">label</span>: <span class="str">"Секция конкурса"</span>
+    <span class="key">placeholder</span>: <span class="str">"например: робототехника"</span>
+    <span class="key">default</span>: <span class="str">"общая"</span>
+    <span class="key">required</span>: <span class="lit">true</span>
+
+  <span class="key">strict_mode</span>:
+    <span class="key">type</span>: <span class="lit">checkbox</span>
+    <span class="key">label</span>: <span class="str">"Жёсткий режим"</span>
+    <span class="key">help</span>: <span class="str">"Снижает балл за каждый недостаток"</span>
+    <span class="key">default</span>: <span class="lit">false</span></div>
+  <div class="manifest-explain">
+    <h4>Параметры формы</h4>
+    <p>Из этого блока портал автоматически рисует форму в UI. Студент описывает поле — пользователь его видит.</p>
+    <p><b>Поддерживаемые типы:</b> <code>text</code>, <code>textarea</code>, <code>number</code>, <code>checkbox</code>, <code>select</code>, <code>radio</code>, <code>date</code>.</p>
+    <p>Для <code>select</code>/<code>radio</code> — поле <code>options</code> со списком значений.</p>
+    <p>Валидация: <code>min</code>, <code>max</code>, <code>pattern</code>, <code>min_length</code>, <code>max_length</code>.</p>
+  </div>
+</div>
+
+<div class="manifest-block">
+  <div class="manifest-yaml"><span class="com"># --- ФАЙЛЫ НА ВХОДЕ ---</span>
+<span class="key">files</span>:
+  <span class="key">works_folder</span>:
+    <span class="key">type</span>: <span class="lit">folder</span>
+    <span class="key">label</span>: <span class="str">"Папка с работами"</span>
+    <span class="key">help</span>: <span class="str">"В каждой подпапке — текст работы и презентация"</span>
+    <span class="key">accept</span>: [<span class="str">".docx"</span>, <span class="str">".pdf"</span>, <span class="str">".pptx"</span>]
+    <span class="key">max_total_size_mb</span>: <span class="num">500</span>
+    <span class="key">required</span>: <span class="lit">true</span></div>
+  <div class="manifest-explain">
+    <h4>Файлы и папки</h4>
+    <p><b>Типы загрузки:</b> <code>single_file</code>, <code>multi_files</code>, <code>folder</code> (с сохранением структуры подпапок), <code>zip</code>.</p>
+    <p>В UI это превращается в drag-n-drop зону. Для <code>folder</code> используется HTML5 directory upload + fallback на ZIP.</p>
+    <p>Внутри контейнера агент получает путь через <code>$INPUT_works_folder</code>. Структура исходных папок сохраняется.</p>
+  </div>
+</div>
+
+<div class="manifest-block outputs">
+  <div class="manifest-yaml"><span class="com"># --- АРТЕФАКТЫ НА ВЫХОДЕ ---</span>
+<span class="key">outputs</span>:
+  - <span class="key">id</span>: <span class="str">report</span>
+    <span class="key">type</span>: <span class="lit">docx</span>
+    <span class="key">label</span>: <span class="str">"Экспертное заключение"</span>
+    <span class="key">filename</span>: <span class="str">"экспертное_заключение.docx"</span>
+    <span class="key">primary</span>: <span class="lit">true</span></div>
+  <div class="manifest-explain">
+    <h4>Что вернёт агент</h4>
+    <p>Список ожидаемых файлов. Портал проверяет что они появились — иначе job помечается как failed.</p>
+    <p><b>Типы:</b> <code>docx</code>, <code>pdf</code>, <code>xlsx</code>, <code>zip</code>, <code>html</code>, <code>json</code>, <code>any</code>.</p>
+    <p><code>primary: true</code> — что предлагается скачать первым большой кнопкой. Остальные — список рядом.</p>
+  </div>
+</div>
+
+<div class="manifest-block runtime">
+  <div class="manifest-yaml"><span class="com"># --- КАК ЗАПУСКАТЬ ---</span>
+<span class="key">runtime</span>:
+  <span class="key">docker</span>:
+    <span class="key">base_image</span>: <span class="str">python:3.12-slim</span>
+    <span class="key">setup</span>:
+      - <span class="str">"pip install -r requirements.txt"</span>
+    <span class="key">entrypoint</span>: [<span class="str">"python"</span>, <span class="str">"agent.py"</span>]
+
+  <span class="key">llm</span>:
+    <span class="key">provider</span>: <span class="lit">openrouter</span>
+    <span class="key">models</span>: [<span class="str">"deepseek/deepseek-chat"</span>]
+
+  <span class="key">limits</span>:
+    <span class="key">max_runtime_minutes</span>: <span class="num">30</span>
+    <span class="key">max_memory_mb</span>: <span class="num">1024</span>
+    <span class="key">max_cpu_cores</span>: <span class="num">2</span></div>
+  <div class="manifest-explain">
+    <h4>Runtime и лимиты</h4>
+    <p><b>Docker:</b> базовый образ + setup-шаги. Образ собирается один раз при добавлении агента и кэшируется.</p>
+    <p><b>LLM:</b> агент декларирует, какие модели использует. Портал инжектит ключ OpenRouter в env. Студент в коде делает обычный <code>OpenAI</code>-клиент с <code>base_url=$OPENROUTER_URL</code>.</p>
+    <p><b>Лимиты:</b> жёсткие потолки. Если агент висит дольше — kill. Защита от бесконечного цикла или утечки.</p>
+  </div>
+</div>

@@ -1,0 +1,102 @@
+<h2>Рекомендуемый tech-stack ядра</h2>
+<p class="subtitle">Стабильное ядро портала. Агенты внутри Docker-sandbox могут быть на чём угодно — на стек ядра это не влияет.</p>
+
+<style>
+  .stack-layer {
+    display: flex; gap: 12px; align-items: stretch;
+    margin-bottom: 10px;
+  }
+  .stack-name {
+    width: 130px; flex-shrink: 0; padding: 12px 14px;
+    border-radius: 10px; background: rgba(99,102,241,0.12);
+    border: 1.5px solid rgba(99,102,241,0.45);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 13.5px; text-align: center;
+  }
+  .stack-tech {
+    flex: 1; padding: 12px 16px; border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1.5px solid rgba(255,255,255,0.14);
+    min-width: 0;
+  }
+  .stack-tech h4 { margin: 0 0 4px 0; font-size: 14.5px; font-weight: 600; }
+  .stack-tech .why { font-size: 12.5px; opacity: 0.88; line-height: 1.5; }
+  .stack-tech .alt { font-size: 11.5px; opacity: 0.62; margin-top: 6px; font-style: italic; }
+  code { background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+</style>
+
+<div class="stack-layer">
+  <div class="stack-name">Frontend</div>
+  <div class="stack-tech">
+    <h4>Next.js 15 + TypeScript + Tailwind + shadcn/ui</h4>
+    <div class="why">React-стек — индустриальный стандарт, востребованный в портфолио. App Router хорошо ложится на «страницы агентов / задач». shadcn/ui даёт production-компоненты без часов вёрстки.</div>
+    <div class="alt">Альтернатива: HTMX + Jinja — быстрее писать, но скучнее студентам</div>
+  </div>
+</div>
+
+<div class="stack-layer">
+  <div class="stack-name">Backend API</div>
+  <div class="stack-tech">
+    <h4>FastAPI + Pydantic v2 + SQLAlchemy 2.0 async + asyncpg</h4>
+    <div class="why">Python-нативный, типизированный, async по умолчанию. Идеально стыкуется с Python-агентами. Pydantic-схемы автоматически становятся OpenAPI-доками — бесплатный материал для команды «агенты».</div>
+    <div class="alt">Альтернатива: Django REST Framework — даёт готовую админку, но тяжелее</div>
+  </div>
+</div>
+
+<div class="stack-layer">
+  <div class="stack-name">База</div>
+  <div class="stack-tech">
+    <h4>PostgreSQL 16 + Alembic (миграции)</h4>
+    <div class="why">JSONB для гибких параметров агентов, full-text search для названий/описаний. Не обсуждается для всего, что больше тривиального.</div>
+  </div>
+</div>
+
+<div class="stack-layer">
+  <div class="stack-name">Очередь</div>
+  <div class="stack-tech">
+    <h4>RQ (Redis Queue) + Redis</h4>
+    <div class="why">Простой и проверенный для нашего масштаба (десятки задач в час). Гораздо проще Celery, на чистом Python. Воркер запускает Docker-контейнер через Docker SDK.</div>
+    <div class="alt">Альтернатива: Postgres-based queue без отдельного Redis</div>
+  </div>
+</div>
+
+<div class="stack-layer">
+  <div class="stack-name">Sandbox</div>
+  <div class="stack-tech">
+    <h4>Docker — один контейнер на одну задачу</h4>
+    <div class="why">Лимиты CPU/RAM/времени. Кривой студенческий агент не валит портал. Зависимости агентов не конфликтуют. Образ агента собирается при добавлении в систему.</div>
+  </div>
+</div>
+
+<div class="stack-layer">
+  <div class="stack-name">Auth</div>
+  <div class="stack-tech">
+    <h4>email + пароль → JWT</h4>
+    <div class="why">Регистрация по приглашению админа — преподаватели небольшое замкнутое сообщество. Если МИРЭА когда-то даст SSO/OAuth — добавим провайдер.</div>
+  </div>
+</div>
+
+<div class="stack-layer">
+  <div class="stack-name">LLM-gateway</div>
+  <div class="stack-tech">
+    <h4>OpenRouter через прокси портала</h4>
+    <div class="why">Один ключ → Claude / GPT / Gemini / DeepSeek. Агент в манифесте указывает модель, портал инжектит токен в env при запуске контейнера. Все вызовы — через прокси, чтобы считать расход и применять лимиты по пользователю/агенту.</div>
+  </div>
+</div>
+
+<div class="stack-layer">
+  <div class="stack-name">Деплой</div>
+  <div class="stack-tech">
+    <h4>Docker Compose → один сервер</h4>
+    <div class="why">Все сервисы в compose-файле. <code>git pull && docker compose up -d</code>. На втором этапе — CI через GitHub Actions с push-on-deploy.</div>
+    <div class="alt">Альтернатива: Kubernetes — overkill для нашего масштаба</div>
+  </div>
+</div>
+
+<div class="stack-layer">
+  <div class="stack-name">Хранилище</div>
+  <div class="stack-tech">
+    <h4>Локальная FS на сервере → S3-совместимое позже</h4>
+    <div class="why">Загрузки + артефакты в директории, прибитой к Postgres. Когда упрёмся в место — переедем на S3 без изменения API (через адаптер).</div>
+  </div>
+</div>

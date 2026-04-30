@@ -1,0 +1,171 @@
+<h2>Runtime-протокол — как агент общается с порталом</h2>
+<p class="subtitle">Контракт между процессом-агентом внутри Docker и воркером портала снаружи. Простой, текстовый, отлаживаемый <code>tail -f</code>.</p>
+
+<style>
+  .pipe {
+    display: grid; grid-template-columns: 1fr 60px 1fr;
+    gap: 0; align-items: stretch; margin: 14px 0 22px 0;
+  }
+  .pipe-side {
+    padding: 16px 18px; border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1.5px solid rgba(255,255,255,0.14);
+  }
+  .pipe-side.portal { background: rgba(99,102,241,0.10); border-color: rgba(99,102,241,0.40); }
+  .pipe-side.agent { background: rgba(245,158,11,0.10); border-color: rgba(245,158,11,0.45); }
+  .pipe-side h4 { margin: 0 0 10px 0; font-size: 14px; font-weight: 600; }
+  .pipe-side ul { margin: 0; padding-left: 18px; font-size: 12.5px; line-height: 1.55; opacity: 0.9; }
+  .pipe-side ul li { margin-bottom: 4px; }
+  .pipe-side ul li code { background: rgba(0,0,0,0.30); padding: 1px 5px; border-radius: 3px; font-size: 11.5px; }
+  .pipe-arrows {
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    gap: 18px; padding: 8px 0;
+  }
+  .pipe-arrow { font-size: 12px; opacity: 0.85; text-align: center; line-height: 1.3; }
+  .pipe-arrow .arrow-glyph { font-size: 22px; opacity: 0.65; display: block; }
+
+  .col2 {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 8px;
+  }
+  .code-block {
+    border-radius: 10px; overflow: hidden;
+    background: rgba(0,0,0,0.32);
+    border: 1.5px solid rgba(255,255,255,0.10);
+  }
+  .code-title {
+    padding: 8px 14px; font-size: 12px; font-weight: 600;
+    background: rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.08);
+    opacity: 0.85;
+  }
+  .code-body {
+    padding: 12px 14px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px; line-height: 1.55; white-space: pre; overflow-x: auto;
+  }
+  .code-body .key { color: #a5b4fc; }
+  .code-body .str { color: #86efac; }
+  .code-body .num { color: #fbbf24; }
+  .code-body .com { color: #6b7280; font-style: italic; }
+  .code-body .lit { color: #f9a8d4; }
+  .code-body .kw { color: #c4b5fd; }
+  .code-body .fn { color: #fdba74; }
+
+  .events-grid {
+    display: grid; grid-template-columns: 130px 1fr; gap: 6px 14px;
+    font-size: 12.5px; line-height: 1.55;
+    padding: 14px 16px; border-radius: 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1.5px solid rgba(255,255,255,0.10);
+  }
+  .events-grid .ev-name { font-family: ui-monospace, monospace; font-weight: 600; color: #a5b4fc; }
+  .events-grid .ev-desc { opacity: 0.9; }
+</style>
+
+<div class="pipe">
+  <div class="pipe-side portal">
+    <h4>🟦 Портал (worker)</h4>
+    <ul>
+      <li>Готовит <code>$INPUT_DIR</code> с загруженными файлами</li>
+      <li>Готовит <code>$OUTPUT_DIR</code> (пустой)</li>
+      <li>Запускает контейнер с инжектом env: <code>OPENROUTER_API_KEY</code>, <code>OPENROUTER_BASE_URL</code></li>
+      <li>Кладёт параметры формы в <code>$PARAMS_FILE</code> (JSON)</li>
+      <li>Слушает <code>stdout</code> построчно — каждая строка JSON-событие</li>
+      <li>Транслирует события в WebSocket для UI и пишет в БД</li>
+      <li>По завершении — индексирует артефакты из <code>$OUTPUT_DIR</code></li>
+    </ul>
+  </div>
+  <div class="pipe-arrows">
+    <div class="pipe-arrow"><span class="arrow-glyph">→</span>params,<br>files</div>
+    <div class="pipe-arrow"><span class="arrow-glyph">←</span>events,<br>artifacts</div>
+  </div>
+  <div class="pipe-side agent">
+    <h4>🟧 Агент (внутри Docker)</h4>
+    <ul>
+      <li>Читает параметры из <code>$PARAMS_FILE</code></li>
+      <li>Читает входные файлы из <code>$INPUT_DIR/&lt;input_id&gt;/...</code></li>
+      <li>Дёргает LLM через OpenRouter обычным OpenAI-клиентом</li>
+      <li>Пишет события прогресса в <code>stdout</code> (NDJSON)</li>
+      <li>Произвольный лог в <code>stderr</code> (туда же print, traceback)</li>
+      <li>Кладёт артефакты в <code>$OUTPUT_DIR</code> с именем из манифеста</li>
+      <li>Финальное событие <code>result</code> или <code>failed</code></li>
+    </ul>
+  </div>
+</div>
+
+<h3 style="margin-top: 22px;">События в stdout — NDJSON-стрим</h3>
+
+<div class="events-grid">
+  <div class="ev-name">started</div>
+  <div class="ev-desc">Агент стартанул. Портал ставит job в статус «выполняется».</div>
+
+  <div class="ev-name">progress</div>
+  <div class="ev-desc">Числовой прогресс 0.0–1.0 плюс человеко-читаемая подпись. UI показывает прогресс-бар.</div>
+
+  <div class="ev-name">log</div>
+  <div class="ev-desc">Сообщение пользователю в общий лог. Уровень <code>info</code> / <code>warn</code> / <code>error</code> / <code>debug</code>.</div>
+
+  <div class="ev-name">item_done</div>
+  <div class="ev-desc">Завершение одного элемента в серии (статья / работа). Появляется в UI отдельной строкой со «✓».</div>
+
+  <div class="ev-name">error</div>
+  <div class="ev-desc">Нефатальная ошибка — отдельный элемент не удался, агент продолжает. UI помечает элемент красным.</div>
+
+  <div class="ev-name">result</div>
+  <div class="ev-desc">Успешное завершение. Список артефактов с <code>id</code> и относительными путями. UI открывает страницу скачивания.</div>
+
+  <div class="ev-name">failed</div>
+  <div class="ev-desc">Критическое падение. Job помечается failed. Артефакты, если успели создаться, доступны для дебага.</div>
+</div>
+
+<h3 style="margin-top: 22px;">Студент видит SDK, не сырой JSON</h3>
+
+<div class="col2">
+  <div class="code-block">
+    <div class="code-title">agent.py — пример с SDK портала</div>
+    <div class="code-body"><span class="kw">from</span> portal_sdk <span class="kw">import</span> Agent
+<span class="kw">from</span> openai <span class="kw">import</span> OpenAI
+
+agent = <span class="fn">Agent</span>()                          <span class="com"># читает $PARAMS_FILE, $INPUT_DIR, $OUTPUT_DIR</span>
+params = agent.params                       <span class="com"># dict с полями формы</span>
+section = params[<span class="str">"section"</span>]
+works_dir = agent.input_dir(<span class="str">"works_folder"</span>) <span class="com"># Path к папке с работами</span>
+
+llm = <span class="fn">OpenAI</span>(
+    api_key=agent.env[<span class="str">"OPENROUTER_API_KEY"</span>],
+    base_url=agent.env[<span class="str">"OPENROUTER_BASE_URL"</span>],
+)
+
+folders = <span class="fn">sorted</span>(works_dir.iterdir())
+<span class="kw">for</span> i, folder <span class="kw">in</span> <span class="fn">enumerate</span>(folders):
+    agent.progress(i / <span class="fn">len</span>(folders),
+                   <span class="fn">f</span><span class="str">"Обработка {folder.name}"</span>)
+    <span class="kw">try</span>:
+        result = <span class="fn">analyze_work</span>(llm, folder, section)
+        agent.item_done(folder.name,
+                        summary=result[<span class="str">"verdict"</span>])
+    <span class="kw">except</span> Exception <span class="kw">as</span> e:
+        agent.error(folder.name, <span class="fn">str</span>(e))
+
+agent.write_docx(<span class="str">"экспертное_заключение.docx"</span>, ...)
+agent.result(artifacts=[<span class="str">"report"</span>])      <span class="com"># id из манифеста</span></div>
+  </div>
+
+  <div class="code-block">
+    <div class="code-title">что портал реально читает в stdout</div>
+    <div class="code-body"><span class="key">{</span><span class="str">"type"</span>:<span class="str">"started"</span>,<span class="str">"ts"</span>:<span class="str">"2026-04-30T15:01:00Z"</span><span class="key">}</span>
+<span class="key">{</span><span class="str">"type"</span>:<span class="str">"progress"</span>,<span class="str">"value"</span>:<span class="num">0.0</span>,<span class="str">"label"</span>:<span class="str">"Обработка 01"</span><span class="key">}</span>
+<span class="key">{</span><span class="str">"type"</span>:<span class="str">"log"</span>,<span class="str">"level"</span>:<span class="str">"info"</span>,<span class="str">"msg"</span>:<span class="str">"найдены файлы"</span><span class="key">}</span>
+<span class="key">{</span><span class="str">"type"</span>:<span class="str">"item_done"</span>,<span class="str">"id"</span>:<span class="str">"01"</span>,<span class="str">"summary"</span>:<span class="str">"НЕ РЕКОМ."</span><span class="key">}</span>
+<span class="key">{</span><span class="str">"type"</span>:<span class="str">"progress"</span>,<span class="str">"value"</span>:<span class="num">0.022</span><span class="key">}</span>
+<span class="key">{</span><span class="str">"type"</span>:<span class="str">"item_done"</span>,<span class="str">"id"</span>:<span class="str">"02"</span>,<span class="str">"summary"</span>:<span class="str">"РЕКОМ."</span><span class="key">}</span>
+<span class="com">// ... 33 строки прогресса ...</span>
+<span class="key">{</span><span class="str">"type"</span>:<span class="str">"progress"</span>,<span class="str">"value"</span>:<span class="num">1.0</span><span class="key">}</span>
+<span class="key">{</span><span class="str">"type"</span>:<span class="str">"result"</span>,<span class="str">"artifacts"</span>:[
+  <span class="key">{</span><span class="str">"id"</span>:<span class="str">"report"</span>,
+   <span class="str">"path"</span>:<span class="str">"экспертное_заключение.docx"</span><span class="key">}</span>
+]<span class="key">}</span>
+
+<span class="com"># stderr — свободный текст для дебага</span>
+<span class="com"># Не парсится, просто пишется в лог job.</span></div>
+  </div>
+</div>

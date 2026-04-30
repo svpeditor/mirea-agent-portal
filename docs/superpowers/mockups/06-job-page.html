@@ -1,0 +1,251 @@
+<h2>Страница задачи — две фазы рядом</h2>
+<p class="subtitle">На ней пользователь сидит 30 минут пока proverka обрабатывает 46 работ. Должна успокаивать и говорить: «не зависло, идём».</p>
+
+<style>
+  .job-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 8px; }
+  .layout-card { border-radius: 12px; overflow: hidden; border: 2px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.02); }
+  .layout-label { padding: 10px 16px; font-weight: 600; font-size: 13.5px; }
+  .layout-label.run { background: rgba(245,158,11,0.18); }
+  .layout-label.done { background: rgba(34,197,94,0.18); }
+  .layout-label .sub { font-weight: 400; opacity: 0.75; font-size: 12px; margin-left: 8px; }
+
+  .mock-page { background: #0f0f17; padding: 14px; min-height: 540px; display: flex; gap: 12px; }
+  .mock-sidebar-l {
+    width: 56px; flex-shrink: 0; padding: 8px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 10px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .side-icon {
+    aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+    border-radius: 7px; font-size: 16px; opacity: 0.6;
+  }
+  .side-icon.active { background: rgba(99,102,241,0.25); opacity: 1; }
+
+  .mock-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+
+  .job-head {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 12px 14px; background: rgba(255,255,255,0.05); border-radius: 10px;
+  }
+  .job-head-icon { font-size: 26px; }
+  .job-head-text { flex: 1; min-width: 0; }
+  .job-head-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+  .job-head-meta { font-size: 11.5px; opacity: 0.65; line-height: 1.5; }
+  .job-head-action {
+    padding: 6px 12px; border-radius: 7px; font-size: 11.5px;
+    background: rgba(244,63,94,0.18); color: #fda4af; border: 1px solid rgba(244,63,94,0.35);
+  }
+  .job-head-action.green { background: rgba(34,197,94,0.20); color: #86efac; border-color: rgba(34,197,94,0.45); }
+
+  .progress-card {
+    padding: 14px; border-radius: 10px;
+    background: rgba(245,158,11,0.08);
+    border: 1.5px solid rgba(245,158,11,0.30);
+  }
+  .progress-card.done { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.35); }
+  .progress-now { font-size: 13px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+  .progress-pct { font-weight: 700; font-size: 14px; color: #fbbf24; }
+  .progress-pct.done { color: #86efac; }
+  .progress-bar { height: 8px; background: rgba(255,255,255,0.10); border-radius: 4px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, #f59e0b, #fbbf24); border-radius: 4px; }
+  .progress-fill.done { background: linear-gradient(90deg, #22c55e, #86efac); width: 100%; }
+  .progress-foot { display: flex; justify-content: space-between; font-size: 11px; opacity: 0.7; margin-top: 6px; }
+
+  .grid-2col { display: grid; grid-template-columns: 1fr 220px; gap: 12px; }
+
+  .events-panel {
+    padding: 12px; border-radius: 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    display: flex; flex-direction: column; gap: 4px;
+    max-height: 260px; overflow-y: auto;
+  }
+  .events-panel h6 { margin: 0 0 6px 0; font-size: 11px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.5px; }
+  .ev-row {
+    display: flex; gap: 8px; font-size: 11.5px; padding: 4px 0;
+    line-height: 1.45; border-top: 1px solid rgba(255,255,255,0.04);
+  }
+  .ev-row .ev-mark { width: 16px; flex-shrink: 0; opacity: 0.85; }
+  .ev-row .ev-mark.ok { color: #86efac; }
+  .ev-row .ev-mark.fail { color: #fda4af; }
+  .ev-row .ev-mark.run { color: #fbbf24; }
+  .ev-row .ev-text { flex: 1; min-width: 0; }
+  .ev-row .ev-time { opacity: 0.5; font-size: 10.5px; }
+  .ev-row .ev-summary { opacity: 0.7; font-size: 10.5px; margin-left: 4px; }
+
+  .params-panel {
+    padding: 12px; border-radius: 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    font-size: 11.5px;
+  }
+  .params-panel h6 { margin: 0 0 8px 0; font-size: 11px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.5px; }
+  .params-row { display: flex; gap: 8px; padding: 5px 0; border-top: 1px solid rgba(255,255,255,0.04); }
+  .params-row .lbl { opacity: 0.6; }
+  .params-row .val { flex: 1; text-align: right; font-weight: 500; }
+
+  .artifact-card {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px; border-radius: 10px;
+    background: rgba(99,102,241,0.10);
+    border: 1.5px solid rgba(99,102,241,0.35);
+    margin-bottom: 8px;
+  }
+  .artifact-icon { font-size: 26px; }
+  .artifact-text { flex: 1; min-width: 0; }
+  .artifact-text .nm { font-weight: 600; font-size: 13px; }
+  .artifact-text .sz { font-size: 11px; opacity: 0.65; margin-top: 2px; }
+  .artifact-btn {
+    padding: 8px 14px; border-radius: 7px; font-size: 12px; font-weight: 600;
+    background: #6366f1; color: white;
+  }
+  .artifact-btn.ghost { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); }
+
+  .summary-card {
+    padding: 12px 14px; border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.10);
+    font-size: 12px; line-height: 1.6;
+  }
+  .summary-card h6 { margin: 0 0 6px 0; font-size: 11px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.5px; }
+  .summary-stats { display: flex; gap: 16px; margin-top: 8px; }
+  .summary-stat .num { font-size: 18px; font-weight: 700; }
+  .summary-stat .lbl { font-size: 10.5px; opacity: 0.65; }
+  .summary-stat.green .num { color: #86efac; }
+  .summary-stat.red .num { color: #fda4af; }
+  .summary-stat.yellow .num { color: #fbbf24; }
+</style>
+
+<div class="job-pair">
+
+  <!-- RUNNING -->
+  <div class="layout-card">
+    <div class="layout-label run">⏳ Задача выполняется <span class="sub">первые ~30 минут жизни задачи</span></div>
+    <div class="mock-page">
+      <div class="mock-sidebar-l">
+        <div class="side-icon active">🔬</div>
+        <div class="side-icon">📚</div>
+        <div class="side-icon">🎯</div>
+        <div class="side-icon" style="margin-top:auto;">🕐</div>
+        <div class="side-icon">⚙️</div>
+      </div>
+      <div class="mock-main">
+        <div class="job-head">
+          <div class="job-head-icon">🎓</div>
+          <div class="job-head-text">
+            <div class="job-head-title">Эксперт работ школьников · #2841</div>
+            <div class="job-head-meta">Запущено 14:02 · идёт 11 мин · оценка ещё ~14 мин</div>
+          </div>
+          <div class="job-head-action">⛔ Отменить</div>
+        </div>
+        <div class="progress-card">
+          <div class="progress-now">
+            <span>Обработка работы 18 из 46 — «Применение нейросетей в анализе...»</span>
+            <span class="progress-pct">39%</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width: 39%;"></div></div>
+          <div class="progress-foot">
+            <span>обработано 17 · ошибок 1 · в очереди 28</span>
+            <span>~$0.18 потрачено</span>
+          </div>
+        </div>
+        <div class="grid-2col">
+          <div class="events-panel">
+            <h6>События задачи (live)</h6>
+            <div class="ev-row"><span class="ev-mark run">⟳</span><span class="ev-text">Обработка <b>18 — «Применение нейросетей»</b><span class="ev-summary">отправлен запрос в LLM…</span></span><span class="ev-time">14:13</span></div>
+            <div class="ev-row"><span class="ev-mark ok">✓</span><span class="ev-text"><b>17 — «Робот-сортировщик»</b><span class="ev-summary">→ РЕКОМЕНДОВАНА</span></span><span class="ev-time">14:13</span></div>
+            <div class="ev-row"><span class="ev-mark ok">✓</span><span class="ev-text"><b>16 — «Анализ почв»</b><span class="ev-summary">→ ТРЕБ. ДОРАБОТКА</span></span><span class="ev-time">14:12</span></div>
+            <div class="ev-row"><span class="ev-mark fail">✗</span><span class="ev-text"><b>15 — «Цифровой_двойник_цеха»</b><span class="ev-summary">не найдена презентация</span></span><span class="ev-time">14:11</span></div>
+            <div class="ev-row"><span class="ev-mark ok">✓</span><span class="ev-text"><b>14 — «Биометрия»</b><span class="ev-summary">→ НЕ РЕКОМЕНДОВАНА</span></span><span class="ev-time">14:10</span></div>
+            <div class="ev-row"><span class="ev-mark ok">✓</span><span class="ev-text"><b>13 — «Распознавание...»</b><span class="ev-summary">→ НЕ РЕКОМЕНДОВАНА</span></span><span class="ev-time">14:09</span></div>
+            <div class="ev-row" style="opacity:0.5;"><span class="ev-mark ok">✓</span><span class="ev-text"><b>12 — «Метеостанция»</b><span class="ev-summary">→ ТРЕБ. ДОРАБОТКА</span></span><span class="ev-time">14:09</span></div>
+          </div>
+          <div class="params-panel">
+            <h6>Параметры запуска</h6>
+            <div class="params-row"><span class="lbl">Секция</span><span class="val">робототехника</span></div>
+            <div class="params-row"><span class="lbl">Жёсткий режим</span><span class="val">нет</span></div>
+            <div class="params-row"><span class="lbl">Файлов</span><span class="val">46 папок</span></div>
+            <div class="params-row"><span class="lbl">Объём</span><span class="val">182 МБ</span></div>
+            <div class="params-row"><span class="lbl">Модель</span><span class="val">deepseek-chat</span></div>
+            <div class="params-row"><span class="lbl">Версия</span><span class="val">v1.0.0</span></div>
+            <h6 style="margin-top:12px;">Лимиты</h6>
+            <div class="params-row"><span class="lbl">Время</span><span class="val">11 / 60 мин</span></div>
+            <div class="params-row"><span class="lbl">Память</span><span class="val">340 / 1024 МБ</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DONE -->
+  <div class="layout-card">
+    <div class="layout-label done">✅ Задача завершена <span class="sub">после успешного выполнения</span></div>
+    <div class="mock-page">
+      <div class="mock-sidebar-l">
+        <div class="side-icon active">🔬</div>
+        <div class="side-icon">📚</div>
+        <div class="side-icon">🎯</div>
+        <div class="side-icon" style="margin-top:auto;">🕐</div>
+        <div class="side-icon">⚙️</div>
+      </div>
+      <div class="mock-main">
+        <div class="job-head">
+          <div class="job-head-icon">🎓</div>
+          <div class="job-head-text">
+            <div class="job-head-title">Эксперт работ школьников · #2841</div>
+            <div class="job-head-meta">Готово · заняла 28 мин · потрачено $0.42</div>
+          </div>
+          <div class="job-head-action green">↻ Запустить ещё раз</div>
+        </div>
+        <div class="progress-card done">
+          <div class="progress-now">
+            <span>Готово · обработано 45 из 46 работ</span>
+            <span class="progress-pct done">100%</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill done"></div></div>
+        </div>
+
+        <div>
+          <div class="artifact-card">
+            <div class="artifact-icon">📄</div>
+            <div class="artifact-text">
+              <div class="nm">экспертное_заключение.docx</div>
+              <div class="sz">2.4 МБ · Word · 113 страниц</div>
+            </div>
+            <div class="artifact-btn">⬇ Скачать</div>
+          </div>
+          <div class="artifact-card" style="background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.12);">
+            <div class="artifact-icon">📋</div>
+            <div class="artifact-text">
+              <div class="nm">summary.json</div>
+              <div class="sz">12 КБ · структурированный результат</div>
+            </div>
+            <div class="artifact-btn ghost">⬇ Скачать</div>
+          </div>
+        </div>
+
+        <div class="grid-2col">
+          <div class="summary-card">
+            <h6>Сводка</h6>
+            Вердикты по 45 проанализированным работам:
+            <div class="summary-stats">
+              <div class="summary-stat green"><div class="num">8</div><div class="lbl">РЕКОМ.</div></div>
+              <div class="summary-stat yellow"><div class="num">12</div><div class="lbl">ДОРАБОТКА</div></div>
+              <div class="summary-stat red"><div class="num">25</div><div class="lbl">НЕ РЕКОМ.</div></div>
+            </div>
+          </div>
+          <div class="params-panel">
+            <h6>Параметры запуска</h6>
+            <div class="params-row"><span class="lbl">Секция</span><span class="val">робототехника</span></div>
+            <div class="params-row"><span class="lbl">Жёсткий режим</span><span class="val">нет</span></div>
+            <div class="params-row"><span class="lbl">Файлов</span><span class="val">46 папок</span></div>
+            <div class="params-row"><span class="lbl">Модель</span><span class="val">deepseek-chat</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top: 18px;">Ключевые принципы: всегда видно что происходит сейчас (не «где-то крутится»), список item_done — главный антидот «зависло-не-зависло», после готово главная кнопка — скачать результат.</p>
