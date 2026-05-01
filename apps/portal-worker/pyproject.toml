@@ -1,0 +1,59 @@
+[project]
+name = "portal-worker"
+version = "0.1.0"
+description = "RQ worker портала AI-агентов МИРЭА"
+requires-python = ">=3.12"
+dependencies = [
+    "rq>=1.16,<2",
+    "redis>=5.0,<6",
+    "sqlalchemy>=2.0.36,<2.1",
+    "psycopg2-binary>=2.9,<3",
+    "pydantic>=2.9,<3",
+    "pydantic-settings>=2.6,<3",
+    "structlog>=24.4,<25",
+    "GitPython>=3.1.43,<4",
+    "docker>=7.1,<8",
+    "PyYAML>=6.0,<7",
+    "portal-sdk @ file:../../packages/portal-sdk-python",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3,<9",
+    "pytest-asyncio>=0.24,<0.30",
+    "pytest-cov>=6.0,<7",
+    "testcontainers[postgres,redis]>=4.8,<5",
+    "ruff>=0.7,<0.20",
+    "mypy>=1.13,<2",
+]
+
+[build-system]
+requires = ["setuptools>=70"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["portal_worker*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "C4", "RUF", "SIM", "RET", "N", "S"]
+ignore = ["S101", "S603", "S607"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106", "S311"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+
+[[tool.mypy.overrides]]
+module = ["redis.*", "rq.*", "git.*", "docker.*", "testcontainers.*", "yaml"]
+ignore_missing_imports = true
