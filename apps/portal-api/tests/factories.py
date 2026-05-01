@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 import secrets
+import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from portal_api.core.security import hash_password
-from portal_api.models import Invite, User
+from portal_api.models import Agent, AgentVersion, Invite, Tab, User
 
 
 class UserFactory:
@@ -72,3 +73,112 @@ class InviteFactory:
         session.add(invite)
         await session.flush()
         return invite
+
+
+_tab_counter = 0
+_agent_counter = 0
+
+
+async def make_tab(
+    session: AsyncSession,
+    *,
+    slug: str | None = None,
+    name: str | None = None,
+    icon: str | None = None,
+    order_idx: int = 0,
+    is_system: bool = False,
+) -> Tab:
+    """Создать вкладку с дефолтами. Все поля переопределимы."""
+    global _tab_counter
+    _tab_counter += 1
+    if slug is None:
+        slug = f"tab-{_tab_counter}-{secrets.token_hex(4)}"
+    if name is None:
+        name = f"Tab {_tab_counter}"
+    now = datetime.now(UTC)
+    tab = Tab(
+        id=uuid.uuid4(),
+        slug=slug,
+        name=name,
+        icon=icon,
+        order_idx=order_idx,
+        is_system=is_system,
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(tab)
+    await session.flush()
+    return tab
+
+
+async def make_agent(
+    session: AsyncSession,
+    *,
+    slug: str,
+    tab_id: uuid.UUID,
+    created_by_user_id: uuid.UUID,
+    name: str | None = None,
+    short_description: str = "test agent",
+    enabled: bool = False,
+    current_version_id: uuid.UUID | None = None,
+    icon: str | None = None,
+    git_url: str = "https://example.com/x.git",
+) -> Agent:
+    """Создать агента. По умолчанию disabled, без current_version."""
+    global _agent_counter
+    _agent_counter += 1
+    if name is None:
+        name = f"Agent {_agent_counter}"
+    now = datetime.now(UTC)
+    agent = Agent(
+        id=uuid.uuid4(),
+        slug=slug,
+        name=name,
+        icon=icon,
+        short_description=short_description,
+        tab_id=tab_id,
+        current_version_id=current_version_id,
+        enabled=enabled,
+        git_url=git_url,
+        created_by_user_id=created_by_user_id,
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(agent)
+    await session.flush()
+    return agent
+
+
+async def make_agent_version(
+    session: AsyncSession,
+    *,
+    agent_id: uuid.UUID,
+    created_by_user_id: uuid.UUID,
+    git_sha: str | None = None,
+    git_ref: str = "main",
+    manifest_jsonb: dict[str, Any] | None = None,
+    manifest_version: str = "1.0",
+    docker_image_tag: str | None = None,
+    status: str = "ready",
+) -> AgentVersion:
+    """Создать версию агента. По умолчанию status='ready'."""
+    if git_sha is None:
+        git_sha = secrets.token_hex(20)
+    if manifest_jsonb is None:
+        manifest_jsonb = {"name": "test", "version": manifest_version}
+    now = datetime.now(UTC)
+    version = AgentVersion(
+        id=uuid.uuid4(),
+        agent_id=agent_id,
+        git_sha=git_sha,
+        git_ref=git_ref,
+        manifest_jsonb=manifest_jsonb,
+        manifest_version=manifest_version,
+        docker_image_tag=docker_image_tag,
+        status=status,
+        created_by_user_id=created_by_user_id,
+        created_at=now,
+    )
+    session.add(version)
+    await session.flush()
+    return version
