@@ -222,3 +222,48 @@ class NoReadyVersionError(AppError):
             ),
             status_code=409,
         )
+
+
+class VersionNotFoundError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="VERSION_NOT_FOUND",
+            message="Версия агента не найдена.",
+            status_code=404,
+        )
+
+
+class VersionAlreadyExistsError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="VERSION_ALREADY_EXISTS",
+            message="Версия с таким git_sha уже существует у этого агента.",
+            status_code=409,
+        )
+
+
+class VersionNotReadyError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="VERSION_NOT_READY",
+            message="Только версии в статусе ready могут быть current.",
+            status_code=409,
+        )
+
+
+class VersionIsCurrentError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="VERSION_IS_CURRENT",
+            message="Эта версия — текущая (current). Сначала переключите current на другую.",
+            status_code=409,
+        )
+
+
+class RetryNotFailedError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="RETRY_NOT_FAILED",
+            message="Retry применим только к версиям в статусе failed.",
+            status_code=400,
+        )

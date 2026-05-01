@@ -20,7 +20,7 @@ class AgentVersionListItemOut(BaseModel):
     build_started_at: datetime | None
     build_finished_at: datetime | None
     build_error: str | None
-    is_current: bool
+    is_current: bool = False
 
 
 class AgentVersionDetailOut(BaseModel):
@@ -39,7 +39,7 @@ class AgentVersionDetailOut(BaseModel):
     build_started_at: datetime | None
     build_finished_at: datetime | None
     build_error: str | None
-    is_current: bool
+    is_current: bool = False
     created_at: datetime
 
 
