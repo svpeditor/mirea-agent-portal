@@ -16,7 +16,7 @@ RQ worker для сборки Docker-образов агентов (МИРЭА A
 | `REDIS_URL` | `redis://redis:6379/0` | Redis broker |
 | `PORTAL_SDK_PATH` | `/portal-sdk-src` | Путь к portal-sdk (опционально) |
 | `BUILD_TIMEOUT_SECONDS` | `600` | Таймаут сборки |
-| `BUILD_CLONE_TIMEOUT_SECONDS` | `120` | Таймаут git clone |
+| `BUILD_CLONE_TIMEOUT_SECONDS` | `60` | Таймаут git clone |
 | `ALLOWED_BASE_IMAGES` | `["python:3.12-slim"]` | Whitelist base-images |
 | `LOG_LEVEL` | `INFO` | Уровень логирования |
 

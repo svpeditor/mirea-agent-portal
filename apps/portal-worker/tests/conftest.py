@@ -129,3 +129,7 @@ def db_with_schema(settings_env: None, pg_container: PostgresContainer) -> Itera
         """))
     engine.dispose()
     yield
+    eng2 = create_engine(db_url)
+    with eng2.begin() as c:
+        c.execute(text("TRUNCATE agent_versions, agents, tabs, users CASCADE"))
+    eng2.dispose()
