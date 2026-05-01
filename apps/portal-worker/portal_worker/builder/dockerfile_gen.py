@@ -21,12 +21,12 @@ WORKDIR /agent
 COPY .portal-sdk /sdk
 RUN pip install --no-cache-dir /sdk
 
-# Setup студента из manifest.runtime.docker.setup
-{setup_block}
-
-# Код агента
+# Код агента (до setup, чтобы setup мог читать requirements.txt и т.п.)
 COPY . /agent
 RUN rm -rf /agent/.portal-sdk /agent/Dockerfile.portal
+
+# Setup студента из manifest.runtime.docker.setup
+{setup_block}
 
 # Non-root
 RUN useradd --create-home --shell /bin/bash agent && chown -R agent:agent /agent
