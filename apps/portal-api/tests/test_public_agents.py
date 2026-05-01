@@ -164,3 +164,11 @@ async def test_list_sorted_by_name(
     names = [a["name"] for a in resp.json()]
     assert names == sorted(names)
     assert names == ["A Agent", "M Agent", "Z Agent"]
+
+
+@pytest.mark.asyncio
+async def test_unauthenticated_gets_401(client: AsyncClient) -> None:
+    resp = await client.get("/api/agents")
+    assert resp.status_code == 401
+    body = resp.json()
+    assert body["error"]["code"] == "NOT_AUTHENTICATED"

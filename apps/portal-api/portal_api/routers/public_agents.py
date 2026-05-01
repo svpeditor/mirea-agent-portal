@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from portal_api.deps import get_current_user, get_db
-from portal_api.models import AgentVersion, Tab, User
+from portal_api.models import Agent, AgentVersion, Tab, User
 from portal_api.schemas.agent import (
     AgentCurrentVersionBrief,
     AgentDetailOut,
@@ -50,7 +50,7 @@ async def get_agent_by_slug(
     )
 
 
-def _to_public_out(agent, version: AgentVersion, tab: Tab) -> AgentPublicOut:  # type: ignore[no-untyped-def]
+def _to_public_out(agent: Agent, version: AgentVersion, tab: Tab) -> AgentPublicOut:
     return AgentPublicOut(
         id=agent.id,
         slug=agent.slug,

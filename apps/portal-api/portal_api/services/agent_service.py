@@ -286,7 +286,7 @@ async def list_public_agents(session: AsyncSession) -> list[tuple[Agent, AgentVe
         .where(Agent.enabled.is_(True), Agent.current_version_id.is_not(None))
         .order_by(Agent.name)
     )
-    return (await session.execute(stmt)).all()  # type: ignore[return-value]
+    return list((await session.execute(stmt)).all())  # type: ignore[arg-type]
 
 
 async def get_public_agent_by_slug(
