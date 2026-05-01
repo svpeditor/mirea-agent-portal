@@ -156,3 +156,48 @@ class InvalidGitRefError(AppError):
             message="Не удалось зарезолвить git-ref в SHA.",
             status_code=400,
         )
+
+
+class AgentSlugTakenError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="AGENT_SLUG_TAKEN",
+            message="Агент с таким slug уже существует.",
+            status_code=409,
+        )
+
+
+class AgentNotFoundError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="AGENT_NOT_FOUND",
+            message="Агент не найден.",
+            status_code=404,
+        )
+
+
+class ManifestInvalidError(AppError):
+    def __init__(self, message: str = "manifest.yaml не прошёл валидацию.") -> None:
+        super().__init__(
+            code="MANIFEST_INVALID",
+            message=message,
+            status_code=400,
+        )
+
+
+class ManifestNotFoundError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="MANIFEST_NOT_FOUND",
+            message="manifest.yaml не найден в репозитории по указанному ref.",
+            status_code=400,
+        )
+
+
+class BaseImageNotAllowedError(AppError):
+    def __init__(self, base_image: str) -> None:
+        super().__init__(
+            code="BASE_IMAGE_NOT_ALLOWED",
+            message=f"base_image '{base_image}' не входит в whitelist портала.",
+            status_code=400,
+        )

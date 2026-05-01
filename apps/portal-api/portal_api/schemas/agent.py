@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl
+from pydantic import AnyUrl, BaseModel, ConfigDict, Field
 
 
 class AgentTabBrief(BaseModel):
@@ -63,7 +63,7 @@ class AgentAdminOut(BaseModel):
 
 
 class AgentCreateIn(BaseModel):
-    git_url: HttpUrl
+    git_url: AnyUrl
     git_ref: str = Field(default="main", min_length=1, max_length=200)
 
 
