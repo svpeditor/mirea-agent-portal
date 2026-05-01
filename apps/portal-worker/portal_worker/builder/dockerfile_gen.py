@@ -21,9 +21,11 @@ WORKDIR /agent
 COPY .portal-sdk /sdk
 RUN pip install --no-cache-dir /sdk
 
-# Код агента (до setup, чтобы setup мог читать requirements.txt и т.п.)
+# Code is COPY'd before setup so user 'setup' lines can reference repo files
+# (e.g. `pip install -r requirements.txt`). Trade-off: any code change busts
+# the user-setup layer. SDK install layer above is unaffected.
 COPY . /agent
-RUN rm -rf /agent/.portal-sdk /agent/Dockerfile.portal
+RUN rm -rf /agent/.portal-sdk /agent/Dockerfile.portal /agent/.git
 
 # Setup студента из manifest.runtime.docker.setup
 {setup_block}

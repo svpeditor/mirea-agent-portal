@@ -93,3 +93,9 @@ def test_brace_in_setup_does_not_crash() -> None:
     from portal_worker.builder.dockerfile_gen import generate_dockerfile
     df = generate_dockerfile(_make_manifest(setup=['bash -c "rm /tmp/{a,b}"']))
     assert 'RUN bash -c "rm /tmp/{a,b}"' in df
+
+
+def test_dotgit_is_cleaned_up() -> None:
+    from portal_worker.builder.dockerfile_gen import generate_dockerfile
+    df = generate_dockerfile(_make_manifest())
+    assert "rm -rf /agent/.portal-sdk /agent/Dockerfile.portal /agent/.git" in df

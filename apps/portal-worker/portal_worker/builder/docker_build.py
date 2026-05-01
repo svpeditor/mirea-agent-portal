@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import docker
+import structlog
 from docker.errors import APIError
 from docker.errors import BuildError as DockerBuildError
 
@@ -66,7 +67,7 @@ def build_image(
         )
         try:
             _, stream = future.result(timeout=timeout_seconds)
-        except TimeoutError as exc:
+        except concurrent.futures.TimeoutError as exc:
             # Best-effort kill all intermediate containers by label
             with contextlib.suppress(Exception):
                 client = docker.from_env()
@@ -87,5 +88,8 @@ def image_size_bytes(tag: str) -> int:
 
 
 def remove_image(tag: str) -> None:
-    with contextlib.suppress(Exception):
+    """Best-effort image deletion; logs warning on failure."""
+    try:
         docker.from_env().images.remove(tag, force=True)
+    except Exception as exc:
+        structlog.get_logger().warning("remove_image_failed", tag=tag, error=str(exc))

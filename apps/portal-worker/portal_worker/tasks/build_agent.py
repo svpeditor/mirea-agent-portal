@@ -63,27 +63,24 @@ def build_agent_version(version_id: str) -> None:
     tempdir = _BUILD_ROOT / f"portal-build-{vid}"
 
     try:
-        # 0. Pre-flight: lock status='pending_build' -> 'building'
+        # 0. Pre-flight: atomic lock status='pending_build' -> 'building'
+        # UPDATE...FROM...RETURNING collapses SELECT+UPDATE into one statement,
+        # eliminating the TOCTOU race where two workers both pass the status guard.
         with session_factory() as session:
             row = session.execute(text("""
-                SELECT av.id, av.git_sha, av.status, a.git_url, a.slug
-                FROM agent_versions av
-                JOIN agents a ON a.id = av.agent_id
-                WHERE av.id = :vid
-            """), {"vid": vid}).first()
-            if row is None:
-                log.error("version_not_found")
-                return
-            if row.status != "pending_build":
-                log.warning("version_not_pending", current_status=row.status)
-                return
-            session.execute(text("""
-                UPDATE agent_versions
-                SET status = 'building', build_started_at = :now,
-                    build_log = NULL, build_error = NULL, build_finished_at = NULL
-                WHERE id = :vid
-            """), {"vid": vid, "now": datetime.now(UTC)})
+                UPDATE agent_versions av
+                SET status='building', build_started_at=:now,
+                    build_log=NULL, build_error=NULL, build_finished_at=NULL
+                FROM agents a
+                WHERE av.id=:vid AND av.status='pending_build' AND a.id = av.agent_id
+                RETURNING av.id, av.git_sha, a.git_url, a.slug
+            """), {"vid": vid, "now": datetime.now(UTC)}).first()
             session.commit()
+            if row is None:
+                # Either version doesn't exist or status != 'pending_build' (raced or already done)
+                log.info("version_not_pending_or_missing")
+                engine.dispose()
+                return
 
             expected_sha = row.git_sha
             git_url = row.git_url
