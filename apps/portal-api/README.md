@@ -106,3 +106,76 @@ DATABASE_URL=postgresql+asyncpg://portal:portal@localhost:5432/portal \
 | `portal_api/core/` | security (JWT/bcrypt), exceptions, logging, origin middleware |
 | `alembic/` | Миграции БД |
 | `tests/` | pytest + testcontainers Postgres |
+
+## Регистрация агента (1.2.2)
+
+После `docker compose up -d --build` можно зарегистрировать агента и запустить сборку образа.
+
+### Предварительные условия
+
+```bash
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=ChangeMeOnFirstLogin
+BASE=http://localhost:8000
+```
+
+### 1. Логин администратора
+
+```bash
+curl -s -c admin.txt -X POST "$BASE/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -H "Origin: http://localhost:8000" \
+  -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}"
+# → {"user": {"id": "...", "email": "...", "role": "admin", ...}}
+```
+
+### 2. Регистрация агента (загрузка manifest.yaml)
+
+```bash
+curl -s -b admin.txt -X POST "$BASE/api/admin/agents" \
+  -H "Origin: http://localhost:8000" \
+  -F "manifest=@agents/echo/manifest.yaml" \
+  -F "source_zip=@agents/echo/echo.zip"
+# → {"id": "<AGENT_ID>", "slug": "echo", "status": "pending", ...}
+```
+
+Сохраните `id` из ответа:
+
+```bash
+AGENT_ID=<id-из-ответа-выше>
+```
+
+### 3. Запуск сборки образа
+
+```bash
+curl -s -b admin.txt -X POST "$BASE/api/admin/agents/$AGENT_ID/build" \
+  -H "Origin: http://localhost:8000"
+# → {"build_id": "<BUILD_ID>", "status": "queued"}
+```
+
+### 4. Опрос статуса сборки
+
+```bash
+curl -s -b admin.txt "$BASE/api/admin/agents/$AGENT_ID/builds/latest" \
+  -H "Origin: http://localhost:8000"
+# → {"status": "success", "image_tag": "portal/agent-echo:v<sha7>", ...}
+```
+
+Worker (RQ) получает задачу из Redis, клонирует исходники, генерирует Dockerfile
+(см. `apps/portal-worker/portal_worker/builder/dockerfile_gen.py`), инжектит portal-sdk
+и собирает образ через Docker daemon. Статус обновляется в БД — `queued` → `building`
+→ `success` (или `failed` с логом ошибки).
+
+### 5. Список агентов
+
+```bash
+curl -s -b admin.txt "$BASE/api/admin/agents" \
+  -H "Origin: http://localhost:8000"
+# → [{"id": "...", "slug": "echo", "status": "ready", ...}]
+```
+
+### Проверка очереди Redis напрямую
+
+```bash
+docker compose exec redis redis-cli lrange rq:queue:default 0 -1
+```
