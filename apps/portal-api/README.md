@@ -109,73 +109,108 @@ DATABASE_URL=postgresql+asyncpg://portal:portal@localhost:5432/portal \
 
 ## Регистрация агента (1.2.2)
 
-После `docker compose up -d --build` можно зарегистрировать агента и запустить сборку образа.
+После `docker compose up -d --build` можно зарегистрировать агента из git-репозитория и дождаться билда Docker-образа. Для smoke-теста используем `agents/echo` через локальный bare-репозиторий, скопированный внутрь worker-контейнера.
 
-### Предварительные условия
+### Подготовка bare-репозитория
+
+```bash
+cd /tmp
+rm -rf echo-fixture echo-fixture.git
+cp -R /root/agent_portal/agents/echo echo-fixture
+cd echo-fixture
+git init -b main
+git -c user.name=t -c user.email=t@t add .
+git -c user.name=t -c user.email=t@t commit -m init
+cd /tmp
+git clone --bare echo-fixture echo-fixture.git
+docker cp /tmp/echo-fixture.git $(docker compose ps -q worker):/tmp/echo-fixture.git
+```
+
+### Сценарий
 
 ```bash
 ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=ChangeMeOnFirstLogin
 BASE=http://localhost:8000
+ORIGIN=http://localhost:8000
 ```
 
-### 1. Логин администратора
+#### 1. Логин администратора
 
 ```bash
-curl -s -c admin.txt -X POST "$BASE/api/auth/login" \
+curl -s -c /tmp/cookies.txt -X POST "$BASE/api/auth/login" \
   -H "Content-Type: application/json" \
-  -H "Origin: http://localhost:8000" \
+  -H "Origin: $ORIGIN" \
   -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}"
-# → {"user": {"id": "...", "email": "...", "role": "admin", ...}}
 ```
 
-### 2. Регистрация агента (загрузка manifest.yaml)
+#### 2. Регистрация агента (auto-enqueues build)
 
 ```bash
-curl -s -b admin.txt -X POST "$BASE/api/admin/agents" \
-  -H "Origin: http://localhost:8000" \
-  -F "manifest=@agents/echo/manifest.yaml" \
-  -F "source_zip=@agents/echo/echo.zip"
-# → {"id": "<AGENT_ID>", "slug": "echo", "status": "pending", ...}
+curl -s -b /tmp/cookies.txt -X POST "$BASE/api/admin/agents" \
+  -H "Content-Type: application/json" \
+  -H "Origin: $ORIGIN" \
+  -d '{"git_url":"file:///tmp/echo-fixture.git","git_ref":"main"}' \
+  | tee /tmp/agent.json
 ```
 
-Сохраните `id` из ответа:
+Ответ:
 
-```bash
-AGENT_ID=<id-из-ответа-выше>
+```json
+{
+  "agent": { "id": "<AGENT_ID>", "slug": "echo", "enabled": false, ... },
+  "version": { "id": "<VERSION_ID>", "status": "pending_build" }
+}
 ```
 
-### 3. Запуск сборки образа
+#### 3. Ожидание status=ready (polling)
 
 ```bash
-curl -s -b admin.txt -X POST "$BASE/api/admin/agents/$AGENT_ID/build" \
-  -H "Origin: http://localhost:8000"
-# → {"build_id": "<BUILD_ID>", "status": "queued"}
+VERSION_ID=$(python3 -c "import json; print(json.load(open('/tmp/agent.json'))['version']['id'])")
+
+for i in $(seq 1 24); do
+  STATUS=$(curl -s -b /tmp/cookies.txt -H "Origin: $ORIGIN" \
+    "$BASE/api/admin/agent_versions/$VERSION_ID" \
+    | python3 -c "import json,sys; print(json.load(sys.stdin)['status'])")
+  echo "[$i] status=$STATUS"
+  [ "$STATUS" = "ready" ] && break
+  [ "$STATUS" = "failed" ] && { echo "BUILD FAILED"; exit 1; }
+  sleep 5
+done
 ```
 
-### 4. Опрос статуса сборки
+Worker слушает очередь `builds` в Redis, клонирует репо, валидирует `manifest.yaml`, генерирует Dockerfile (см. `apps/portal-worker/portal_worker/builder/dockerfile_gen.py`), инжектит portal-sdk и собирает образ через Docker daemon. Статусы: `pending_build` → `building` → `ready` (или `failed` с `build_error`+`build_log` в БД).
+
+#### 4. Сделать версию current и включить агента
 
 ```bash
-curl -s -b admin.txt "$BASE/api/admin/agents/$AGENT_ID/builds/latest" \
-  -H "Origin: http://localhost:8000"
-# → {"status": "success", "image_tag": "portal/agent-echo:v<sha7>", ...}
+AGENT_ID=$(python3 -c "import json; print(json.load(open('/tmp/agent.json'))['agent']['id'])")
+
+curl -s -b /tmp/cookies.txt -X POST -H "Origin: $ORIGIN" \
+  "$BASE/api/admin/agent_versions/$VERSION_ID/set_current"
+
+curl -s -b /tmp/cookies.txt -X PATCH \
+  -H "Content-Type: application/json" \
+  -H "Origin: $ORIGIN" \
+  "$BASE/api/admin/agents/$AGENT_ID" \
+  -d '{"enabled":true}'
 ```
 
-Worker (RQ) получает задачу из Redis, клонирует исходники, генерирует Dockerfile
-(см. `apps/portal-worker/portal_worker/builder/dockerfile_gen.py`), инжектит portal-sdk
-и собирает образ через Docker daemon. Статус обновляется в БД — `queued` → `building`
-→ `success` (или `failed` с логом ошибки).
-
-### 5. Список агентов
+#### 5. Проверка — public listing + Docker-образ
 
 ```bash
-curl -s -b admin.txt "$BASE/api/admin/agents" \
-  -H "Origin: http://localhost:8000"
-# → [{"id": "...", "slug": "echo", "status": "ready", ...}]
+curl -s -b /tmp/cookies.txt -H "Origin: $ORIGIN" "$BASE/api/agents"
+docker images | grep portal/agent-echo
 ```
 
-### Проверка очереди Redis напрямую
+Ожидается: `/api/agents` возвращает массив с echo, `docker images` показывает `portal/agent-echo:v<sha7>`.
+
+### Failed-сценарий
+
+Манифест с заведомо плохим `setup` (например, `pip install non-existent-pkg-xyz`) пишет в БД `status=failed`, `build_error=docker_error`, полный pip-лог в `build_log`. Регрессионный тест: `apps/portal-worker/tests/test_build_agent.py::test_build_with_bad_setup_writes_failed`.
+
+### Заглянуть в очередь Redis напрямую
 
 ```bash
-docker compose exec redis redis-cli lrange rq:queue:default 0 -1
+docker compose exec redis redis-cli lrange rq:queue:builds 0 -1
 ```
