@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from pydantic import EmailStr, PostgresDsn, SecretStr
+from pydantic import EmailStr, PostgresDsn, RedisDsn, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -37,6 +37,16 @@ class Settings(BaseSettings):
     # Misc
     log_level: str = "INFO"
     environment: str = "dev"
+
+    # Redis (RQ broker для билд-очереди)
+    redis_url: RedisDsn = "redis://redis:6379/0"  # type: ignore[assignment]
+
+    # Builder: разрешённые base-images для Dockerfile-gen
+    allowed_base_images: list[str] = [
+        "python:3.11-slim",
+        "python:3.12-slim",
+        "python:3.13-slim",
+    ]
 
 
 @lru_cache

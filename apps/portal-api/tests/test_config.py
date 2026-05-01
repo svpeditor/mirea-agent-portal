@@ -37,3 +37,35 @@ def test_settings_allowed_origins_parses_json(monkeypatch: pytest.MonkeyPatch) -
 
     settings = Settings()
     assert settings.allowed_origins == ["http://localhost:3000", "http://x.test"]
+
+
+def test_settings_default_redis_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("REDIS_URL", raising=False)
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://x:x@localhost/x")
+    monkeypatch.setenv("JWT_SECRET", "x" * 32)
+
+    from portal_api.config import Settings
+
+    s = Settings()  # type: ignore[call-arg]
+    assert str(s.redis_url) == "redis://redis:6379/0"
+
+
+def test_settings_allowed_base_images_default() -> None:
+    from portal_api.config import Settings
+
+    assert Settings.model_fields["allowed_base_images"].default == [
+        "python:3.11-slim",
+        "python:3.12-slim",
+        "python:3.13-slim",
+    ]
+
+
+def test_settings_redis_url_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://x:x@localhost/x")
+    monkeypatch.setenv("JWT_SECRET", "x" * 32)
+    monkeypatch.setenv("REDIS_URL", "redis://other:6380/3")
+
+    from portal_api.config import Settings
+
+    s = Settings()  # type: ignore[call-arg]
+    assert str(s.redis_url) == "redis://other:6380/3"
