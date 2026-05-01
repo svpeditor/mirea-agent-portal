@@ -14,22 +14,26 @@ import asyncio
 import subprocess
 import tempfile
 import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import yaml
 from portal_sdk.manifest import Manifest
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from portal_api.config import Settings
 from portal_api.core.exceptions import (
+    AgentHasVersionsError,
+    AgentNotFoundError,
     AgentSlugTakenError,
     BaseImageNotAllowedError,
     ManifestInvalidError,
     ManifestNotFoundError,
+    NoReadyVersionError,
     TabNotFoundError,
 )
 from portal_api.core.git_resolve import resolve_git_ref
@@ -191,3 +195,98 @@ async def create_agent(
     session.add(version)
     await session.flush()
     return agent, version
+
+
+async def list_admin_agents(
+    session: AsyncSession,
+    *,
+    tab_id: uuid.UUID | None = None,
+    enabled: bool | None = None,
+) -> list[tuple[Agent, AgentVersion | None]]:
+    """Список ВСЕХ агентов для admin UI (вкл. disabled).
+
+    Возвращает список пар (agent, latest_version | None). Latest определяется
+    как `MAX(created_at)` среди всех версий агента. Реализация: 1 запрос
+    агентов + 1 запрос всех версий, group-by в Python (берём первую
+    встреченную для каждого agent_id, поскольку запрос идёт ORDER BY
+    agent_id, created_at DESC).
+    """
+    stmt = select(Agent)
+    if tab_id is not None:
+        stmt = stmt.where(Agent.tab_id == tab_id)
+    if enabled is not None:
+        stmt = stmt.where(Agent.enabled.is_(enabled))
+    stmt = stmt.order_by(Agent.created_at)
+    agents = list((await session.execute(stmt)).scalars().all())
+    if not agents:
+        return []
+
+    agent_ids = [a.id for a in agents]
+    versions_stmt = (
+        select(AgentVersion)
+        .where(AgentVersion.agent_id.in_(agent_ids))
+        .order_by(AgentVersion.agent_id, AgentVersion.created_at.desc())
+    )
+    all_versions = list((await session.execute(versions_stmt)).scalars().all())
+
+    latest_per_agent: dict[uuid.UUID, AgentVersion] = {}
+    for v in all_versions:
+        if v.agent_id not in latest_per_agent:
+            latest_per_agent[v.agent_id] = v
+
+    return [(a, latest_per_agent.get(a.id)) for a in agents]
+
+
+async def get_agent(session: AsyncSession, agent_id: uuid.UUID) -> Agent:
+    """Найти агента по id или кинуть AgentNotFoundError."""
+    agent = await session.get(Agent, agent_id)
+    if agent is None:
+        raise AgentNotFoundError()
+    return agent
+
+
+async def update_agent(
+    session: AsyncSession,
+    agent_id: uuid.UUID,
+    *,
+    tab_id: uuid.UUID | None = None,
+    enabled: bool | None = None,
+) -> Agent:
+    """Изменить tab_id и/или enabled у агента.
+
+    Toggle `enabled=True` допустим только если у агента есть `current_version_id`
+    (т.е. есть готовая версия и она помечена как current). Иначе 409
+    NoReadyVersionError.
+    """
+    agent = await get_agent(session, agent_id)
+    if tab_id is not None:
+        # Проверим, что вкладка существует — иначе FK выпадет на flush
+        tab = await session.get(Tab, tab_id)
+        if tab is None:
+            raise TabNotFoundError()
+        agent.tab_id = tab_id
+    if enabled is not None:
+        if enabled and agent.current_version_id is None:
+            raise NoReadyVersionError()
+        agent.enabled = enabled
+    agent.updated_at = datetime.now(UTC)
+    await session.flush()
+    return agent
+
+
+async def delete_agent(session: AsyncSession, agent_id: uuid.UUID) -> None:
+    """Удалить агента.
+
+    Если у агента есть хотя бы одна версия → AgentHasVersionsError (409).
+    """
+    agent = await get_agent(session, agent_id)
+    count_stmt = (
+        select(func.count())
+        .select_from(AgentVersion)
+        .where(AgentVersion.agent_id == agent_id)
+    )
+    count = (await session.execute(count_stmt)).scalar_one()
+    if count > 0:
+        raise AgentHasVersionsError()
+    await session.delete(agent)
+    await session.flush()

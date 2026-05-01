@@ -201,3 +201,24 @@ class BaseImageNotAllowedError(AppError):
             message=f"base_image '{base_image}' не входит в whitelist портала.",
             status_code=400,
         )
+
+
+class AgentHasVersionsError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="AGENT_HAS_VERSIONS",
+            message="Сначала удалите все версии агента.",
+            status_code=409,
+        )
+
+
+class NoReadyVersionError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="NO_READY_VERSION",
+            message=(
+                "Включить агента можно только когда у него есть готовая (ready) "
+                "версия и она помечена как current."
+            ),
+            status_code=409,
+        )

@@ -16,7 +16,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from portal_api.models import Agent, AgentVersion, Tab, User
-from tests.factories import make_agent, make_tab
+from tests.factories import make_agent, make_agent_version, make_tab
 
 
 async def _clear_tabs(db: AsyncSession) -> None:
@@ -217,6 +217,197 @@ async def test_create_agent_unreachable_url_400(
     )
     assert resp.status_code == 400, resp.text
     assert resp.json()["error"]["code"] == "INVALID_GIT_URL"
+
+
+# --- GET /api/admin/agents (list + single) ---
+
+
+@pytest.mark.asyncio
+async def test_list_agents_includes_disabled(
+    db: AsyncSession,
+    admin_client: AsyncClient,
+    admin_user: User,
+) -> None:
+    await _clear_tabs(db)
+    tab = await make_tab(db, slug="t1", name="Tab1", order_idx=1)
+    await make_agent(
+        db,
+        slug="enabled-agent",
+        tab_id=tab.id,
+        created_by_user_id=admin_user.id,
+        enabled=True,
+    )
+    await make_agent(
+        db,
+        slug="disabled-agent",
+        tab_id=tab.id,
+        created_by_user_id=admin_user.id,
+        enabled=False,
+    )
+    await db.commit()
+
+    resp = await admin_client.get("/api/admin/agents")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    slugs = {a["slug"] for a in body}
+    assert "enabled-agent" in slugs
+    assert "disabled-agent" in slugs
+
+
+@pytest.mark.asyncio
+async def test_get_agent_returns_versions_list(
+    db: AsyncSession,
+    admin_client: AsyncClient,
+    admin_user: User,
+) -> None:
+    await _clear_tabs(db)
+    tab = await make_tab(db, slug="t1", name="Tab1", order_idx=1)
+    agent = await make_agent(
+        db,
+        slug="solo",
+        tab_id=tab.id,
+        created_by_user_id=admin_user.id,
+    )
+    await make_agent_version(
+        db,
+        agent_id=agent.id,
+        created_by_user_id=admin_user.id,
+        status="ready",
+    )
+    await db.commit()
+
+    resp = await admin_client.get(f"/api/admin/agents/{agent.id}")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["slug"] == "solo"
+    assert body["id"] == str(agent.id)
+    assert body["latest_version"] is not None
+    assert body["latest_version"]["status"] == "ready"
+
+
+@pytest.mark.asyncio
+async def test_get_404_on_unknown(
+    db: AsyncSession,
+    admin_client: AsyncClient,
+) -> None:
+    await _clear_tabs(db)
+    await db.commit()
+
+    resp = await admin_client.get(f"/api/admin/agents/{uuid.uuid4()}")
+    assert resp.status_code == 404, resp.text
+    assert resp.json()["error"]["code"] == "AGENT_NOT_FOUND"
+
+
+# --- PATCH /api/admin/agents/{id} ---
+
+
+@pytest.mark.asyncio
+async def test_patch_agent_move_tab(
+    db: AsyncSession,
+    admin_client: AsyncClient,
+    admin_user: User,
+) -> None:
+    await _clear_tabs(db)
+    src = await make_tab(db, slug="src", name="Src", order_idx=1)
+    dst = await make_tab(db, slug="dst", name="Dst", order_idx=2)
+    agent = await make_agent(
+        db,
+        slug="movable",
+        tab_id=src.id,
+        created_by_user_id=admin_user.id,
+    )
+    await db.commit()
+
+    resp = await admin_client.patch(
+        f"/api/admin/agents/{agent.id}",
+        json={"tab_id": str(dst.id)},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["tab_id"] == str(dst.id)
+
+    res = await db.execute(select(Agent).where(Agent.id == agent.id))
+    fresh = res.scalar_one()
+    await db.refresh(fresh)
+    assert fresh.tab_id == dst.id
+
+
+@pytest.mark.asyncio
+async def test_patch_agent_enable_without_current_version_409(
+    db: AsyncSession,
+    admin_client: AsyncClient,
+    admin_user: User,
+) -> None:
+    await _clear_tabs(db)
+    tab = await make_tab(db, slug="t1", name="Tab1", order_idx=1)
+    agent = await make_agent(
+        db,
+        slug="no-current",
+        tab_id=tab.id,
+        created_by_user_id=admin_user.id,
+        enabled=False,
+        current_version_id=None,
+    )
+    await db.commit()
+
+    resp = await admin_client.patch(
+        f"/api/admin/agents/{agent.id}",
+        json={"enabled": True},
+    )
+    assert resp.status_code == 409, resp.text
+    assert resp.json()["error"]["code"] == "NO_READY_VERSION"
+
+
+# --- DELETE /api/admin/agents/{id} ---
+
+
+@pytest.mark.asyncio
+async def test_delete_agent_with_versions_409(
+    db: AsyncSession,
+    admin_client: AsyncClient,
+    admin_user: User,
+) -> None:
+    await _clear_tabs(db)
+    tab = await make_tab(db, slug="t1", name="Tab1", order_idx=1)
+    agent = await make_agent(
+        db,
+        slug="hasversions",
+        tab_id=tab.id,
+        created_by_user_id=admin_user.id,
+    )
+    await make_agent_version(
+        db,
+        agent_id=agent.id,
+        created_by_user_id=admin_user.id,
+    )
+    await db.commit()
+
+    resp = await admin_client.delete(f"/api/admin/agents/{agent.id}")
+    assert resp.status_code == 409, resp.text
+    assert resp.json()["error"]["code"] == "AGENT_HAS_VERSIONS"
+
+
+@pytest.mark.asyncio
+async def test_delete_agent_no_versions_204(
+    db: AsyncSession,
+    admin_client: AsyncClient,
+    admin_user: User,
+) -> None:
+    await _clear_tabs(db)
+    tab = await make_tab(db, slug="t1", name="Tab1", order_idx=1)
+    agent = await make_agent(
+        db,
+        slug="empty",
+        tab_id=tab.id,
+        created_by_user_id=admin_user.id,
+    )
+    await db.commit()
+
+    resp = await admin_client.delete(f"/api/admin/agents/{agent.id}")
+    assert resp.status_code == 204, resp.text
+
+    res = await db.execute(select(Agent).where(Agent.id == agent.id))
+    assert res.scalar_one_or_none() is None
 
 
 # --- helpers ---
