@@ -173,7 +173,9 @@ async def create_agent(
         await session.flush()
     except IntegrityError as e:
         await session.rollback()
-        raise AgentSlugTakenError() from e
+        if "agents_slug_key" in str(e.orig):
+            raise AgentSlugTakenError() from e
+        raise
 
     manifest_snapshot = manifest.model_dump(mode="json")
     version = AgentVersion(
