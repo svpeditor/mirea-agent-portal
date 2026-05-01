@@ -1,0 +1,39 @@
+"""ORM-модель User."""
+from __future__ import annotations
+
+import uuid
+from datetime import datetime
+from decimal import Decimal
+
+from sqlalchemy import CheckConstraint, DateTime, Numeric, String, func, text
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column
+
+from portal_api.models.base import Base
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    __table_args__ = (
+        CheckConstraint("role IN ('user', 'admin')", name="users_role_check"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        server_default=text("gen_random_uuid()"),
+    )
+    email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String, nullable=False)
+    display_name: Mapped[str] = mapped_column(String, nullable=False)
+    role: Mapped[str] = mapped_column(String, nullable=False, server_default="user")
+    monthly_budget_usd: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), nullable=False, server_default=text("5.00")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
