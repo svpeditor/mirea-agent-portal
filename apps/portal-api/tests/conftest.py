@@ -10,6 +10,7 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from testcontainers.postgres import PostgresContainer
+from testcontainers.redis import RedisContainer
 
 # Сразу выставим ENV на всё session, чтобы Settings прошли валидацию
 # Реальный DATABASE_URL подменим в фикстуре `_setup_database_url`
@@ -34,6 +35,36 @@ def postgres_container() -> Iterator[PostgresContainer]:
         "postgres:16-alpine", username="test", password="test", dbname="test"
     ) as pg:
         yield pg
+
+
+@pytest.fixture(scope="session")
+def redis_container() -> Iterator[RedisContainer]:
+    """Один Redis-контейнер на всю test-сессию (broker для RQ)."""
+    with RedisContainer("redis:7-alpine") as r:
+        yield r
+
+
+@pytest.fixture
+def redis_url(redis_container: RedisContainer) -> str:
+    host = redis_container.get_container_host_ip()
+    port = redis_container.get_exposed_port(6379)
+    return f"redis://{host}:{port}/0"
+
+
+@pytest.fixture
+def reset_redis(redis_container: RedisContainer) -> Iterator[None]:
+    """Перед/после каждого теста, который трогает Redis, очищаем БД."""
+    import redis as redis_lib
+
+    host = redis_container.get_container_host_ip()
+    port = redis_container.get_exposed_port(6379)
+    client = redis_lib.Redis(host=host, port=int(port), db=0)
+    client.flushdb()
+    try:
+        yield
+    finally:
+        client.flushdb()
+        client.close()
 
 
 @pytest.fixture(scope="session")

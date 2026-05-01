@@ -138,3 +138,21 @@ class TabNotFoundError(AppError):
             message="Вкладка не найдена.",
             status_code=404,
         )
+
+
+class InvalidGitUrlError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="INVALID_GIT_URL",
+            message="Git URL должен быть https-ссылкой на доступный репозиторий.",
+            status_code=400,
+        )
+
+
+class InvalidGitRefError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="INVALID_GIT_REF",
+            message="Не удалось зарезолвить git-ref в SHA.",
+            status_code=400,
+        )
