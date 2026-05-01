@@ -67,3 +67,29 @@ def test_all_three_python_versions_supported() -> None:
     for img in ["python:3.11-slim", "python:3.12-slim", "python:3.13-slim"]:
         df = generate_dockerfile(_make_manifest(base_image=img))
         assert df.startswith(f"FROM {img}")
+
+
+def test_newline_in_base_image_raises() -> None:
+    import pytest as _pytest
+
+    from portal_worker.builder.dockerfile_gen import generate_dockerfile
+    from portal_worker.core.exceptions import BuildError
+    with _pytest.raises(BuildError) as exc:
+        generate_dockerfile(_make_manifest(base_image="python:3.12-slim\nRUN evil"))
+    assert exc.value.code == "manifest_invalid"
+
+
+def test_newline_in_setup_raises() -> None:
+    import pytest as _pytest
+
+    from portal_worker.builder.dockerfile_gen import generate_dockerfile
+    from portal_worker.core.exceptions import BuildError
+    with _pytest.raises(BuildError) as exc:
+        generate_dockerfile(_make_manifest(setup=["pip install foo\nRUN evil"]))
+    assert exc.value.code == "manifest_invalid"
+
+
+def test_brace_in_setup_does_not_crash() -> None:
+    from portal_worker.builder.dockerfile_gen import generate_dockerfile
+    df = generate_dockerfile(_make_manifest(setup=['bash -c "rm /tmp/{a,b}"']))
+    assert 'RUN bash -c "rm /tmp/{a,b}"' in df

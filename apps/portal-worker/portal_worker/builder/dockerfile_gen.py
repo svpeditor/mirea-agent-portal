@@ -10,6 +10,8 @@ import json
 
 from portal_sdk.manifest import Manifest
 
+from portal_worker.core.exceptions import BuildError
+
 _TEMPLATE = """FROM {base_image}
 
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
@@ -35,11 +37,25 @@ ENTRYPOINT {entrypoint_json}
 
 
 def generate_dockerfile(manifest: Manifest) -> str:
+    base_image = manifest.runtime.docker.base_image
+    if "\n" in base_image or "\r" in base_image:
+        raise BuildError(
+            "manifest_invalid",
+            f"base_image contains newline: {base_image!r}",
+        )
     setup_lines = manifest.runtime.docker.setup or []
+    for line in setup_lines:
+        if "\n" in line or "\r" in line:
+            raise BuildError(
+                "manifest_invalid",
+                f"setup line contains newline: {line!r}",
+            )
     setup_block = "\n".join(f"RUN {line}" for line in setup_lines) or "# (no setup)"
     entrypoint_json = json.dumps(list(manifest.runtime.docker.entrypoint), ensure_ascii=False)
+    # str.format() substituted values are not re-parsed for format fields, so
+    # user setup lines like 'bash -c "rm /tmp/{a,b}"' are safe to pass as-is.
     return _TEMPLATE.format(
-        base_image=manifest.runtime.docker.base_image,
+        base_image=base_image,
         setup_block=setup_block,
         entrypoint_json=entrypoint_json,
     )
