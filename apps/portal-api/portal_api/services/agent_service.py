@@ -274,6 +274,41 @@ async def update_agent(
     return agent
 
 
+async def list_public_agents(session: AsyncSession) -> list[tuple[Agent, AgentVersion, Tab]]:
+    """Список публичных агентов: enabled=True и current_version_id IS NOT NULL.
+
+    Отсортировано по name.
+    """
+    stmt = (
+        select(Agent, AgentVersion, Tab)
+        .join(AgentVersion, AgentVersion.id == Agent.current_version_id)
+        .join(Tab, Tab.id == Agent.tab_id)
+        .where(Agent.enabled.is_(True), Agent.current_version_id.is_not(None))
+        .order_by(Agent.name)
+    )
+    return (await session.execute(stmt)).all()  # type: ignore[return-value]
+
+
+async def get_public_agent_by_slug(
+    session: AsyncSession, slug: str,
+) -> tuple[Agent, AgentVersion, Tab]:
+    """Найти публичный агент по slug (enabled + current_version) или кинуть AgentNotFoundError."""
+    stmt = (
+        select(Agent, AgentVersion, Tab)
+        .join(AgentVersion, AgentVersion.id == Agent.current_version_id)
+        .join(Tab, Tab.id == Agent.tab_id)
+        .where(
+            Agent.enabled.is_(True),
+            Agent.current_version_id.is_not(None),
+            Agent.slug == slug,
+        )
+    )
+    row = (await session.execute(stmt)).first()
+    if row is None:
+        raise AgentNotFoundError()
+    return row  # type: ignore[return-value]
+
+
 async def delete_agent(session: AsyncSession, agent_id: uuid.UUID) -> None:
     """Удалить агента.
 

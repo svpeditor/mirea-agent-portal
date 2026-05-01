@@ -25,6 +25,7 @@ from portal_api.routers import (
     auth,
     health,
     me,
+    public_agents,
     public_tabs,
 )
 
@@ -94,3 +95,4 @@ app.include_router(admin_tabs.router, prefix="/api")
 app.include_router(admin_agents.router, prefix="/api")
 app.include_router(admin_agent_versions.router, prefix="/api")
 app.include_router(public_tabs.router, prefix="/api")
+app.include_router(public_agents.router, prefix="/api")
