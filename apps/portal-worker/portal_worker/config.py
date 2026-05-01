@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import PostgresDsn, RedisDsn
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -22,11 +23,16 @@ class Settings(BaseSettings):
     redis_url: RedisDsn = "redis://redis:6379/0"  # type: ignore[assignment]
 
     # Путь к portal-sdk (опционально, для контейнера)
-    portal_sdk_path: str = "/portal-sdk-src"
+    portal_sdk_path: Path = Path("/portal-sdk")
 
     # Таймауты сборки
     build_timeout_seconds: int = 600
-    build_clone_timeout_seconds: int = 120
+    build_clone_timeout_seconds: int = 60
+
+    # Лимиты размеров при сборке
+    build_max_repo_size_bytes: int = 50 * 1024 * 1024
+    build_max_image_size_bytes: int = 2 * 1024**3
+    build_memory_limit_bytes: int = 2 * 1024**3
 
     # Whitelist base-images для Dockerfile-gen
     allowed_base_images: list[str] = [

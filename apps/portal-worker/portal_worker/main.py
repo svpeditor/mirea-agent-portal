@@ -17,7 +17,7 @@ def main() -> None:
 
     conn = redis.from_url(str(settings.redis_url))  # type: ignore[no-untyped-call]
     worker = Worker(queues=["builds"], connection=conn)
-    worker.work()
+    worker.work(with_scheduler=False)
 
 
 if __name__ == "__main__":
