@@ -9,7 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from portal_api.bootstrap import bootstrap_admin
+from portal_api.bootstrap import bootstrap_admin, bootstrap_tabs
 from portal_api.config import get_settings
 from portal_api.core.exceptions import AppError
 from portal_api.core.logging import configure_logging
@@ -26,6 +26,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     session_local = get_sessionmaker()
     async with session_local() as session:
         await bootstrap_admin(session, settings)
+        await bootstrap_tabs(session)
     yield
 
 
