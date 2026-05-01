@@ -60,7 +60,7 @@ def clone_at_sha(
                 capture_output=True,
             )
     except subprocess.TimeoutExpired as exc:
-        raise BuildError("clone_failed", f"timeout after {clone_timeout}s") from exc
+        raise BuildError("clone_failed", f"timeout after {exc.timeout}s") from exc
     except subprocess.CalledProcessError as exc:
         log = (exc.stderr or b"").decode(errors="replace")
         raise BuildError("clone_failed", log) from exc
