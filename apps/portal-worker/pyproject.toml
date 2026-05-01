@@ -55,5 +55,5 @@ python_version = "3.12"
 strict = true
 
 [[tool.mypy.overrides]]
-module = ["redis.*", "rq.*", "git.*", "docker.*", "testcontainers.*", "yaml"]
+module = ["redis.*", "rq.*", "git.*", "docker.*", "testcontainers.*", "yaml", "portal_sdk.*"]
 ignore_missing_imports = true
