@@ -45,6 +45,7 @@ def _setup_database_url(postgres_container: PostgresContainer) -> Iterator[str]:
         "postgresql://", "postgresql+asyncpg://"
     )
     os.environ["DATABASE_URL"] = url
+    os.environ["ALLOWED_ORIGINS"] = '["http://test"]'
     # Сбросить кеш Settings и engine
     from portal_api import config, db
 

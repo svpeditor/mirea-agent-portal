@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+import structlog
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,6 +26,8 @@ from portal_api.core.security import (
 from portal_api.models import RefreshToken, User
 from portal_api.schemas.auth import RegisterIn
 from portal_api.services.invite_service import consume_invite, find_active_invite_by_token
+
+_log = structlog.get_logger(__name__)
 
 _DUMMY_PASSWORD_HASH: str | None = None
 
@@ -169,6 +172,14 @@ async def refresh(
         )
         await db.commit()  # Persist the revoke-all BEFORE raising;
                            # otherwise get_db rolls it back on exception.
+        _log.warning(
+            "refresh_reuse_detected",
+            user_id=str(token.user_id),
+            old_user_agent=token.user_agent,
+            old_ip=str(token.ip) if token.ip else None,
+            new_user_agent=user_agent,
+            new_ip=ip,
+        )
         raise RefreshReuseDetected()
 
     if token.expires_at <= datetime.now(UTC):

@@ -1,6 +1,7 @@
 """FastAPI app — точка входа."""
 from __future__ import annotations
 
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -13,6 +14,7 @@ from portal_api.config import get_settings
 from portal_api.core.exceptions import AppError
 from portal_api.core.logging import configure_logging
 from portal_api.core.origin import OriginCheckMiddleware
+from portal_api.core.request_log import RequestLogMiddleware
 from portal_api.db import get_sessionmaker
 from portal_api.routers import admin_invites, admin_users, auth, health, me
 
@@ -30,6 +32,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="MIREA Agent Portal API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(OriginCheckMiddleware)
+app.add_middleware(RequestLogMiddleware)  # outermost — sees status from inner middleware
 
 
 @app.exception_handler(AppError)
@@ -52,6 +55,20 @@ async def validation_handler(request: Request, exc: RequestValidationError) -> J
                     {"loc": list(e["loc"]), "msg": e["msg"], "type": e["type"]}
                     for e in exc.errors()
                 ],
+            }
+        },
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    logging.getLogger(__name__).exception("unhandled_exception", exc_info=exc)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": {
+                "code": "INTERNAL_ERROR",
+                "message": "Внутренняя ошибка сервера. Попробуй позже.",
             }
         },
     )

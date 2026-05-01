@@ -30,7 +30,7 @@ class OriginCheckMiddleware(BaseHTTPMiddleware):
         if request.method in _UNSAFE_METHODS:
             settings = get_settings()
             origin = request.headers.get("origin") or request.headers.get("referer")
-            allowed = set(settings.allowed_origins) | {"http://test"}
+            allowed = set(settings.allowed_origins)
             if origin is None:
                 return JSONResponse(
                     status_code=403,
