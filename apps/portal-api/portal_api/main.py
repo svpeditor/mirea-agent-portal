@@ -16,7 +16,15 @@ from portal_api.core.logging import configure_logging
 from portal_api.core.origin import OriginCheckMiddleware
 from portal_api.core.request_log import RequestLogMiddleware
 from portal_api.db import get_sessionmaker
-from portal_api.routers import admin_invites, admin_users, auth, health, me, public_tabs
+from portal_api.routers import (
+    admin_invites,
+    admin_tabs,
+    admin_users,
+    auth,
+    health,
+    me,
+    public_tabs,
+)
 
 
 @asynccontextmanager
@@ -80,4 +88,5 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(me.router, prefix="/api")
 app.include_router(admin_users.router, prefix="/api")
 app.include_router(admin_invites.router, prefix="/api")
+app.include_router(admin_tabs.router, prefix="/api")
 app.include_router(public_tabs.router, prefix="/api")

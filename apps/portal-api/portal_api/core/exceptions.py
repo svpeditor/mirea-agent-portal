@@ -102,3 +102,39 @@ class InviteAlreadyPending(AppError):
             status_code=409,
             details=[{"existing_invite_id": existing_id}],
         )
+
+
+class TabSlugTakenError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="TAB_SLUG_TAKEN",
+            message="Slug этой вкладки уже занят.",
+            status_code=409,
+        )
+
+
+class TabNotEmptyError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="TAB_NOT_EMPTY",
+            message="Нельзя удалить вкладку, в которой есть агенты.",
+            status_code=409,
+        )
+
+
+class TabIsSystemError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="TAB_IS_SYSTEM",
+            message="Системную вкладку нельзя удалять или менять её slug.",
+            status_code=403,
+        )
+
+
+class TabNotFoundError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="TAB_NOT_FOUND",
+            message="Вкладка не найдена.",
+            status_code=404,
+        )
