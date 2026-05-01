@@ -16,6 +16,7 @@ def load_and_validate_manifest(
     agent_slug: str,
     allowed_base_images: list[str],
 ) -> Manifest:
+    """Парсит manifest.yaml + проверяет id_mismatch и base_image_whitelist."""
     manifest_path = repo_dir / "manifest.yaml"
     if not manifest_path.exists():
         raise BuildError(
@@ -39,7 +40,8 @@ def load_and_validate_manifest(
             f"id_mismatch: manifest.id={manifest.id!r} != agent.slug={agent_slug!r}",
         )
 
-    if manifest.runtime.docker.base_image not in allowed_base_images:
+    base_image = manifest.runtime.docker.base_image.strip()
+    if base_image not in allowed_base_images:
         raise BuildError(
             "base_image_not_allowed",
             f"base_image={manifest.runtime.docker.base_image!r} "
