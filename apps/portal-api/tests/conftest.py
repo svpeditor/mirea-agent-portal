@@ -55,20 +55,46 @@ def _setup_database_url(postgres_container: PostgresContainer) -> Iterator[str]:
     yield url
 
 
-@pytest_asyncio.fixture(scope="session")
-async def _migrated(_setup_database_url: str) -> AsyncIterator[None]:
-    """Прогоняет alembic upgrade head на тестовом Postgres."""
+def _make_alembic_config():  # type: ignore[no-untyped-def]
+    """Сборка Alembic Config для тестов (использует уже подменённый DATABASE_URL)."""
     from alembic.config import Config
-
-    from alembic import command
 
     cfg = Config(os.path.join(os.path.dirname(__file__), "..", "alembic.ini"))
     cfg.set_main_option(
         "script_location", os.path.join(os.path.dirname(__file__), "..", "alembic")
     )
+    return cfg
+
+
+@pytest_asyncio.fixture(scope="session")
+async def _migrated(_setup_database_url: str) -> AsyncIterator[None]:
+    """Прогоняет alembic upgrade head на тестовом Postgres."""
+    from alembic import command
+
+    cfg = _make_alembic_config()
     # Run в синхронном режиме через alembic — оно само поднимает event loop
     await asyncio.to_thread(command.upgrade, cfg, "head")
     yield
+
+
+@pytest.fixture
+def alembic_config(_migrated: None):  # type: ignore[no-untyped-def]
+    """Alembic Config для downgrade/upgrade в тестах миграций."""
+    return _make_alembic_config()
+
+
+@pytest_asyncio.fixture
+async def db_engine(_migrated: None) -> AsyncIterator:  # type: ignore[type-arg]
+    """Async engine, подключённый к мигрированной тестовой БД.
+
+    Используется в тестах миграций, которые сами управляют транзакциями
+    и DDL-проверками (через `inspect`).
+    """
+    engine = create_async_engine(os.environ["DATABASE_URL"])
+    try:
+        yield engine
+    finally:
+        await engine.dispose()
 
 
 @pytest_asyncio.fixture
