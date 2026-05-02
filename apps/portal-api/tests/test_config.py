@@ -69,3 +69,20 @@ def test_settings_redis_url_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
     s = Settings()  # type: ignore[call-arg]
     assert str(s.redis_url) == "redis://other:6380/3"
+
+
+def test_settings_loads_job_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    from portal_api.config import Settings
+
+    s = Settings(
+        database_url="postgresql+asyncpg://u:p@h/db",
+        redis_url="redis://r:6379/0",
+        jwt_secret="x" * 32,
+        initial_admin_email="a@example.com",
+        initial_admin_password="passwordpassword",
+    )
+    assert s.max_job_input_bytes == 100 * 1024 * 1024
+    assert s.max_job_output_bytes == 1024**3
+    assert s.job_timeout_seconds == 1800
+    assert s.file_store_backend == "local"
+    assert str(s.file_store_local_root) == "/var/portal-files"

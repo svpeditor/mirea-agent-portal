@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
+from typing import Literal
 
 from pydantic import EmailStr, PostgresDsn, RedisDsn, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -47,6 +49,13 @@ class Settings(BaseSettings):
         "python:3.12-slim",
         "python:3.13-slim",
     ]
+
+    # Лимиты и хранилище для jobs (1.2.3)
+    max_job_input_bytes: int = 100 * 1024 * 1024
+    max_job_output_bytes: int = 1024**3
+    job_timeout_seconds: int = 1800
+    file_store_backend: Literal["local"] = "local"
+    file_store_local_root: Path = Path("/var/portal-files")
 
 
 @lru_cache
