@@ -9,14 +9,25 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from portal_api.bootstrap import bootstrap_admin
+from portal_api.bootstrap import bootstrap_admin, bootstrap_tabs
 from portal_api.config import get_settings
 from portal_api.core.exceptions import AppError
 from portal_api.core.logging import configure_logging
 from portal_api.core.origin import OriginCheckMiddleware
 from portal_api.core.request_log import RequestLogMiddleware
 from portal_api.db import get_sessionmaker
-from portal_api.routers import admin_invites, admin_users, auth, health, me
+from portal_api.routers import (
+    admin_agent_versions,
+    admin_agents,
+    admin_invites,
+    admin_tabs,
+    admin_users,
+    auth,
+    health,
+    me,
+    public_agents,
+    public_tabs,
+)
 
 
 @asynccontextmanager
@@ -26,6 +37,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     session_local = get_sessionmaker()
     async with session_local() as session:
         await bootstrap_admin(session, settings)
+        await bootstrap_tabs(session)
     yield
 
 
@@ -79,3 +91,8 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(me.router, prefix="/api")
 app.include_router(admin_users.router, prefix="/api")
 app.include_router(admin_invites.router, prefix="/api")
+app.include_router(admin_tabs.router, prefix="/api")
+app.include_router(admin_agents.router, prefix="/api")
+app.include_router(admin_agent_versions.router, prefix="/api")
+app.include_router(public_tabs.router, prefix="/api")
+app.include_router(public_agents.router, prefix="/api")

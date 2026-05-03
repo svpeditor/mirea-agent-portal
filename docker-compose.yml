@@ -15,10 +15,23 @@ services:
     ports:
       - "127.0.0.1:5433:5432"
 
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
   api:
-    build: ./apps/portal-api
+    build:
+      context: .
+      dockerfile: apps/portal-api/Dockerfile
     environment:
       DATABASE_URL: postgresql+asyncpg://portal:portal@postgres:5432/portal
+      REDIS_URL: redis://redis:6379/0
       JWT_SECRET: ${JWT_SECRET}
       INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL}
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD}
@@ -30,9 +43,27 @@ services:
       - "8000:8000"
     volumes:
       - ./apps/portal-api:/app
+      - ./packages/portal-sdk-python:/portal-sdk-src:ro
     depends_on:
-      postgres:
-        condition: service_healthy
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/portal-worker/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg2://portal:portal@postgres:5432/portal
+      REDIS_URL: redis://redis:6379/0
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      PORTAL_SDK_PATH: /portal-sdk
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./packages/portal-sdk-python:/portal-sdk:ro
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_healthy }
 
 volumes:
   postgres_data:
+  redis_data:

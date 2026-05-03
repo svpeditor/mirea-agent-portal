@@ -102,3 +102,168 @@ class InviteAlreadyPending(AppError):
             status_code=409,
             details=[{"existing_invite_id": existing_id}],
         )
+
+
+class TabSlugTakenError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="TAB_SLUG_TAKEN",
+            message="Slug этой вкладки уже занят.",
+            status_code=409,
+        )
+
+
+class TabNotEmptyError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="TAB_NOT_EMPTY",
+            message="Нельзя удалить вкладку, в которой есть агенты.",
+            status_code=409,
+        )
+
+
+class TabIsSystemError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="TAB_IS_SYSTEM",
+            message="Системную вкладку нельзя удалять или менять её slug.",
+            status_code=403,
+        )
+
+
+class TabNotFoundError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="TAB_NOT_FOUND",
+            message="Вкладка не найдена.",
+            status_code=404,
+        )
+
+
+class InvalidGitUrlError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="INVALID_GIT_URL",
+            message="Git URL должен быть https-ссылкой на доступный репозиторий.",
+            status_code=400,
+        )
+
+
+class InvalidGitRefError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="INVALID_GIT_REF",
+            message="Не удалось зарезолвить git-ref в SHA.",
+            status_code=400,
+        )
+
+
+class AgentSlugTakenError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="AGENT_SLUG_TAKEN",
+            message="Агент с таким slug уже существует.",
+            status_code=409,
+        )
+
+
+class AgentNotFoundError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="AGENT_NOT_FOUND",
+            message="Агент не найден.",
+            status_code=404,
+        )
+
+
+class ManifestInvalidError(AppError):
+    def __init__(self, message: str = "manifest.yaml не прошёл валидацию.") -> None:
+        super().__init__(
+            code="MANIFEST_INVALID",
+            message=message,
+            status_code=400,
+        )
+
+
+class ManifestNotFoundError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="MANIFEST_NOT_FOUND",
+            message="manifest.yaml не найден в репозитории по указанному ref.",
+            status_code=400,
+        )
+
+
+class BaseImageNotAllowedError(AppError):
+    def __init__(self, base_image: str) -> None:
+        super().__init__(
+            code="BASE_IMAGE_NOT_ALLOWED",
+            message=f"base_image '{base_image}' не входит в whitelist портала.",
+            status_code=400,
+        )
+
+
+class AgentHasVersionsError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="AGENT_HAS_VERSIONS",
+            message="Сначала удалите все версии агента.",
+            status_code=409,
+        )
+
+
+class NoReadyVersionError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="NO_READY_VERSION",
+            message=(
+                "Включить агента можно только когда у него есть готовая (ready) "
+                "версия и она помечена как current."
+            ),
+            status_code=409,
+        )
+
+
+class VersionNotFoundError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="VERSION_NOT_FOUND",
+            message="Версия агента не найдена.",
+            status_code=404,
+        )
+
+
+class VersionAlreadyExistsError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="VERSION_ALREADY_EXISTS",
+            message="Версия с таким git_sha уже существует у этого агента.",
+            status_code=409,
+        )
+
+
+class VersionNotReadyError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="VERSION_NOT_READY",
+            message="Только версии в статусе ready могут быть current.",
+            status_code=409,
+        )
+
+
+class VersionIsCurrentError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="VERSION_IS_CURRENT",
+            message="Эта версия — текущая (current). Сначала переключите current на другую.",
+            status_code=409,
+        )
+
+
+class RetryNotFailedError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="RETRY_NOT_FAILED",
+            message="Retry применим только к версиям в статусе failed.",
+            status_code=400,
+        )

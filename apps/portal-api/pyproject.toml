@@ -15,6 +15,10 @@ dependencies = [
     "pyjwt>=2.9,<3",
     "structlog>=24.4,<25",
     "email-validator>=2.2,<3",
+    "rq>=1.16,<2",
+    "redis>=5.0,<6",
+    "GitPython>=3.1.43,<4",
+    "portal-sdk @ file:../../packages/portal-sdk-python",
 ]
 
 [project.optional-dependencies]
@@ -23,7 +27,7 @@ dev = [
     "pytest-asyncio>=0.24,<0.30",
     "pytest-cov>=6.0,<7",
     "httpx>=0.28,<0.30",
-    "testcontainers[postgres]>=4.8,<5",
+    "testcontainers[postgres,redis]>=4.8,<5",
     "freezegun>=1.5,<2",
     "ruff>=0.7,<0.20",
     "mypy>=1.13,<2",
@@ -53,8 +57,9 @@ select = ["E", "F", "W", "I", "B", "UP", "C4", "RUF", "SIM", "RET", "N", "S"]
 ignore = ["S101"]  # assert в тестах
 
 [tool.ruff.lint.per-file-ignores]
-# хардкод "паролей" и random в тестах OK; кириллица в docstring'ах не двусмысленна
-"tests/**" = ["S105", "S106", "S107", "S311", "RUF002", "RUF003"]
+# хардкод "паролей" и random в тестах OK; кириллица в docstring'ах не двусмысленна;
+# subprocess вызовы git/etc в фикстурах — это контролируемая доверенная среда
+"tests/**" = ["S105", "S106", "S107", "S311", "RUF002", "RUF003", "S603", "S607"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -64,6 +69,14 @@ exclude = ["alembic/versions/"]
 
 [[tool.mypy.overrides]]
 module = ["testcontainers.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["redis.*", "rq.*", "git.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["yaml", "yaml.*", "portal_sdk.*"]
 ignore_missing_imports = true
 
 [tool.coverage.run]
