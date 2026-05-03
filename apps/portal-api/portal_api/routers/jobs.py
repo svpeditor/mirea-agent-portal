@@ -8,7 +8,10 @@ import uuid
 from collections.abc import AsyncIterator
 from typing import Any
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi.responses import StreamingResponse
+from redis import Redis as SyncRedis
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.datastructures import UploadFile
 
@@ -19,9 +22,16 @@ from portal_api.core.exceptions import (
     ParamsInvalidJsonError,
 )
 from portal_api.deps import get_current_user, get_db, get_job_enqueuer
-from portal_api.models import JobFile, User
-from portal_api.schemas.job import JobCreatedOut
-from portal_api.services import job_service
+from portal_api.models import Agent, AgentVersion, JobFile, User
+from portal_api.schemas.job import (
+    JobAgentBrief,
+    JobCancelOut,
+    JobCreatedOut,
+    JobDetailOut,
+    JobEventOut,
+    JobListItemOut,
+)
+from portal_api.services import job_event_service, job_service
 from portal_api.services.file_store import LocalDiskFileStore
 from portal_api.services.job_enqueue import JobEnqueuer
 
@@ -107,3 +117,116 @@ async def create_job(
             id=job.id, status=job.status, agent_slug=slug,
         ).model_dump(mode="json"),
     }
+
+
+@router.get("/jobs", response_model=list[JobListItemOut])
+async def list_jobs(
+    limit: int = 20,
+    before: uuid.UUID | None = None,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> list[JobListItemOut]:
+    if limit < 1 or limit > 100:
+        raise HTTPException(status_code=400, detail="limit must be 1..100")
+    jobs = await job_service.list_for_user(db, user, limit=limit, before=before)
+    return [JobListItemOut.model_validate(j) for j in jobs]
+
+
+@router.get("/jobs/{job_id}", response_model=JobDetailOut)
+async def get_job(
+    job_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> JobDetailOut:
+    from portal_api.core.exceptions import JobNotFoundError
+
+    job = await job_service.get_job_for_user(db, job_id, user)
+    if job is None:
+        raise JobNotFoundError()
+    agent_row = (await db.execute(
+        select(Agent.slug, Agent.name)
+        .join(AgentVersion, AgentVersion.id == job.agent_version_id)
+        .where(Agent.id == AgentVersion.agent_id)
+    )).first()
+    count, last_seq = await job_event_service.count_for_job(db, job.id)
+    return JobDetailOut(
+        id=job.id, status=job.status, agent_version_id=job.agent_version_id,
+        agent=JobAgentBrief(slug=agent_row.slug, name=agent_row.name),
+        params=job.params_jsonb,
+        started_at=job.started_at, finished_at=job.finished_at,
+        exit_code=job.exit_code, error_code=job.error_code, error_msg=job.error_msg,
+        output_summary=job.output_summary_jsonb,
+        events_count=count, last_event_seq=last_seq,
+        created_at=job.created_at,
+    )
+
+
+@router.get("/jobs/{job_id}/events", response_model=list[JobEventOut])
+async def list_job_events(
+    job_id: uuid.UUID,
+    since: int = 0,
+    limit: int = 200,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> list[dict[str, Any]]:
+    from portal_api.core.exceptions import JobNotFoundError
+
+    if limit < 1 or limit > 1000:
+        raise HTTPException(status_code=400, detail="limit must be 1..1000")
+    job = await job_service.get_job_for_user(db, job_id, user)
+    if job is None:
+        raise JobNotFoundError()
+    return await job_event_service.list_since(db, job_id, since=since, limit=limit)
+
+
+@router.get("/jobs/{job_id}/outputs/{file_id}")
+async def download_job_output(
+    job_id: uuid.UUID,
+    file_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+    user: User = Depends(get_current_user),
+) -> StreamingResponse:
+    from portal_api.core.exceptions import JobNotFoundError
+
+    job = await job_service.get_job_for_user(db, job_id, user)
+    if job is None:
+        raise JobNotFoundError()
+    file_row = (await db.execute(
+        select(JobFile).where(
+            JobFile.id == file_id,
+            JobFile.job_id == job_id,
+            JobFile.kind == "output",
+        )
+    )).scalar_one_or_none()
+    if file_row is None:
+        raise HTTPException(status_code=404, detail={"error_code": "file_not_found"})
+
+    fs = LocalDiskFileStore(root=settings.file_store_local_root)
+    return StreamingResponse(
+        fs.get(file_row.storage_key),
+        media_type=file_row.content_type or "application/octet-stream",
+        headers={
+            "Content-Disposition": f'attachment; filename="{file_row.filename}"',
+            "Content-Length": str(file_row.size_bytes),
+        },
+    )
+
+
+@router.post("/jobs/{job_id}/cancel", response_model=JobCancelOut)
+async def cancel_job_endpoint(
+    job_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+    user: User = Depends(get_current_user),
+) -> JobCancelOut:
+    from portal_api.core.exceptions import JobNotFoundError
+
+    job = await job_service.cancel_job(db, job_id, user)
+    if job is None:
+        raise JobNotFoundError()
+    if job.status == "running":
+        redis = SyncRedis.from_url(str(settings.redis_url))
+        redis.set(f"job:{job_id}:cancel", "1", ex=3600)
+        redis.close()
+    return JobCancelOut(id=job.id, status=job.status)

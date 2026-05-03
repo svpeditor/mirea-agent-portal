@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from portal_api.core.exceptions import AgentNotFoundError, AgentNotReadyError
@@ -81,3 +82,37 @@ async def list_for_user(
             )
     stmt = stmt.order_by(Job.created_at.desc(), Job.id.desc()).limit(limit)
     return list((await session.execute(stmt)).scalars().all())
+
+
+async def cancel_job(
+    session: AsyncSession, job_id: uuid.UUID, user: User,
+) -> Job | None:
+    """Атомарно cancel queued. Если running — пометить флаг (worker увидит).
+
+    Возвращает обновлённый Job, либо None если 404 (нет / чужой).
+    raises JobAlreadyFinishedError если в финальном статусе.
+    """
+    from portal_api.core.exceptions import JobAlreadyFinishedError
+
+    job = await get_job_for_user(session, job_id, user)
+    if job is None:
+        return None
+    if job.status in ("ready", "failed"):
+        raise JobAlreadyFinishedError()
+    if job.status == "cancelled":
+        return job  # idempotent
+    if job.status == "queued":
+        result = await session.execute(text("""
+            UPDATE jobs SET status='cancelled', finished_at=:now
+            WHERE id=:vid AND status='queued'
+            RETURNING id
+        """), {"vid": job_id, "now": datetime.now(UTC)})
+        if result.first() is None:
+            await session.refresh(job)
+            if job.status == "running":
+                return job
+            raise JobAlreadyFinishedError()
+        await session.commit()
+        await session.refresh(job)
+        return job
+    return job
