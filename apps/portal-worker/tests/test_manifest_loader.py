@@ -29,9 +29,6 @@ runtime:
     base_image: "{base_image}"
     setup: []
     entrypoint: ["python", "agent.py"]
-  llm:
-    provider: openrouter
-    models: []
   limits:
     max_runtime_minutes: 1
     max_memory_mb: 128

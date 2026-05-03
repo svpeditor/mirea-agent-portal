@@ -102,6 +102,7 @@ def build_agent_version(version_id: str) -> None:
         manifest = load_and_validate_manifest(
             repo_dir=repo_dir, agent_slug=agent_slug,
             allowed_base_images=settings.allowed_base_images,
+            allowed_llm_models=settings.llm_allowed_models,
         )
 
         # 3. Build context: copy repo + SDK
