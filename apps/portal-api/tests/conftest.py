@@ -217,6 +217,23 @@ async def user_client(client: AsyncClient, regular_user) -> AsyncClient:  # type
     return client
 
 
+@pytest.fixture
+def db_sessionmaker(_migrated: None) -> async_sessionmaker[AsyncSession]:
+    """async_sessionmaker, подключённый к тестовому Postgres.
+
+    Используется в тестах, которые сами создают app с dependency_overrides
+    (напр. test_llm_auth.py). Каждый вызов sessionmaker() открывает новую
+    сессию без автоматического rollback — изоляция обеспечивается тестовым
+    порядком.
+    """
+    engine = create_async_engine(os.environ["DATABASE_URL"])
+    return async_sessionmaker(
+        bind=engine,
+        expire_on_commit=False,
+        class_=AsyncSession,
+    )
+
+
 @pytest.fixture(autouse=True)
 def _reset_engine() -> Iterator[None]:
     """Сбрасываем глобальный engine между тестами, чтобы не текло между rollbacks."""
