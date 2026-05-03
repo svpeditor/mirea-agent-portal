@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Annotated
 
 from pydantic import PostgresDsn, RedisDsn, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -50,7 +51,7 @@ class Settings(BaseSettings):
     # LLM proxy (1.2.4)
     llm_proxy_base_url: str = "http://portal-api:8000/llm/v1"
     llm_agents_network_name: str = "portal-agents-net"
-    llm_allowed_models: list[str] | str = []  # noqa: RUF002
+    llm_allowed_models: Annotated[list[str], NoDecode] = []
 
     @field_validator("llm_allowed_models", mode="before")
     @classmethod

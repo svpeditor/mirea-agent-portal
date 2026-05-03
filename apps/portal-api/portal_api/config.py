@@ -4,10 +4,10 @@ from __future__ import annotations
 from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import EmailStr, PostgresDsn, RedisDsn, SecretStr, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -61,7 +61,7 @@ class Settings(BaseSettings):
     # LLM proxy (1.2.4)
     openrouter_api_key: SecretStr
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
-    llm_allowed_models: list[str] | str = []  # noqa: RUF002
+    llm_allowed_models: Annotated[list[str], NoDecode] = []
     llm_default_user_quota_usd: Decimal = Decimal("5.0000")
     llm_default_per_job_cap_usd: Decimal = Decimal("0.5000")
     llm_pricing_refresh_interval_seconds: int = 21600
