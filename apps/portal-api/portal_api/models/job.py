@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import (
+    TIMESTAMP,
     CheckConstraint,
     ForeignKey,
     Integer,
@@ -42,11 +43,15 @@ class Job(Base):
     params_jsonb: Mapped[dict[str, Any]] = mapped_column(
         JSONB(), nullable=False, default=dict, server_default="{}",
     )
-    started_at: Mapped[datetime | None]
-    finished_at: Mapped[datetime | None]
+    started_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
     exit_code: Mapped[int | None] = mapped_column(Integer())
     error_msg: Mapped[str | None] = mapped_column(Text())
     error_code: Mapped[str | None] = mapped_column(Text())
     output_summary_jsonb: Mapped[dict[str, Any] | None] = mapped_column(JSONB())
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False,
+    )

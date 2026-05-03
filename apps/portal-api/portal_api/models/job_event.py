@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import ForeignKey, Integer, Text, UniqueConstraint, func
+from sqlalchemy import TIMESTAMP, ForeignKey, Integer, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -26,6 +26,8 @@ class JobEvent(Base):
         UUID(as_uuid=True), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False,
     )
     seq: Mapped[int] = mapped_column(Integer(), nullable=False)
-    ts: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+    ts: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False,
+    )
     event_type: Mapped[str] = mapped_column(Text(), nullable=False)
     payload_jsonb: Mapped[dict[str, Any]] = mapped_column(JSONB(), nullable=False)

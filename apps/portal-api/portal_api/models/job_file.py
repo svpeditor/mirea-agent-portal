@@ -5,6 +5,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
+    TIMESTAMP,
     BigInteger,
     CheckConstraint,
     ForeignKey,
@@ -40,4 +41,6 @@ class JobFile(Base):
     size_bytes: Mapped[int] = mapped_column(BigInteger(), nullable=False)
     sha256: Mapped[str] = mapped_column(Text(), nullable=False)
     storage_key: Mapped[str] = mapped_column(Text(), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False,
+    )

@@ -71,17 +71,12 @@ async def list_for_user(
             await session.execute(select(Job).where(Job.id == before))
         ).scalar_one_or_none()
         if before_job is not None:
-            # Strip timezone info if present — jobs.created_at is TIMESTAMP WITHOUT TIME ZONE
-            cursor_ts = (
-                before_job.created_at.replace(tzinfo=None)
-                if before_job.created_at.tzinfo
-                else before_job.created_at
-            )
-            # Composite keyset: rows strictly before the cursor by (created_at DESC, id DESC)
+            # Композитный keyset (created_at, id): два job могут оказаться в одной микросекунде
+            # (тесты создают 5 jobs in a row); без id-разрешителя страница теряет/дублирует строки.
             stmt = stmt.where(
                 or_(
-                    Job.created_at < cursor_ts,
-                    and_(Job.created_at == cursor_ts, Job.id < before_job.id),
+                    Job.created_at < before_job.created_at,
+                    and_(Job.created_at == before_job.created_at, Job.id < before_job.id),
                 )
             )
     stmt = stmt.order_by(Job.created_at.desc(), Job.id.desc()).limit(limit)
