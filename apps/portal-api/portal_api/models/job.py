@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
@@ -10,6 +11,7 @@ from sqlalchemy import (
     CheckConstraint,
     ForeignKey,
     Integer,
+    Numeric,
     Text,
     func,
 )
@@ -54,4 +56,7 @@ class Job(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False,
+    )
+    cost_usd_total: Mapped[Decimal] = mapped_column(
+        Numeric(10, 6), nullable=False, server_default="0",
     )
