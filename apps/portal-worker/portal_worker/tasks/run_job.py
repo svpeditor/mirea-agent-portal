@@ -14,12 +14,13 @@ from redis import Redis
 from sqlalchemy import text
 
 from portal_worker.config import get_settings
-from portal_worker.db import make_engine, make_session_factory
+from portal_worker.db import make_engine, make_session_factory, revoke_ephemeral_token_in_db
 from portal_worker.runner.docker_runner import (
     RunCancelled,
     RunTimeout,
     run_agent_container,
 )
+from portal_worker.runner.llm_runtime_config import LlmRuntimeConfig
 from portal_worker.runner.output_verifier import (
     OutputMissingError,
     scan_output_dir,
@@ -52,8 +53,19 @@ def recover_orphaned_jobs() -> None:
     engine.dispose()
 
 
-def run_job(job_id: str) -> None:
-    """Запустить указанный job. Финализирует через UPDATE при любом исходе."""
+def run_job(payload: dict | str) -> None:
+    """Запустить указанный job. Финализирует через UPDATE при любом исходе.
+
+    payload — dict с ключами job_id (и опционально ephemeral_token), либо
+    str job_id для обратной совместимости.
+    """
+    if isinstance(payload, str):
+        job_id = payload
+        ephemeral_token: str | None = None
+    else:
+        job_id = payload["job_id"]
+        ephemeral_token = payload.get("ephemeral_token")
+
     settings = get_settings()
     engine = make_engine(settings)
     session_factory = make_session_factory(engine)
@@ -61,6 +73,7 @@ def run_job(job_id: str) -> None:
     log = structlog.get_logger().bind(job_id=job_id)
     vid = uuid.UUID(job_id)
     workdir = _BUILD_ROOT / f"portal-job-{vid}"
+    llm_config: LlmRuntimeConfig | None = None
 
     try:
         # 1. Атомарный лок + загрузить joined-данные
@@ -82,6 +95,16 @@ def run_job(job_id: str) -> None:
             image_tag = row.docker_image_tag
             params = row.params_jsonb
             agent_slug = row.agent_slug  # noqa: F841 — available for future use
+
+        # 1b. Построить LlmRuntimeConfig если manifest содержит runtime.llm
+        raw_manifest = row.manifest_jsonb or {}
+        runtime_llm = (raw_manifest.get("runtime") or {}).get("llm")
+        if runtime_llm and ephemeral_token:
+            llm_config = LlmRuntimeConfig(
+                ephemeral_token=ephemeral_token,
+                agents_network_name=settings.llm_agents_network_name,
+                proxy_base_url=settings.llm_proxy_base_url,
+            )
 
         # 2. Материализовать inputs из FileStore (local = читать с диска)  # noqa: RUF003
         input_src = settings.file_store_local_root / str(vid) / "input"
@@ -136,6 +159,7 @@ def run_job(job_id: str) -> None:
                 cancel_check=lambda: bool(redis.exists(f"job:{vid}:cancel")),
                 on_event=on_event,
                 labels={"portal-job": str(vid)},
+                llm_config=llm_config,
             )
         except RunCancelled:
             _finalize(session_factory, vid, status="cancelled",
@@ -194,6 +218,9 @@ def run_job(job_id: str) -> None:
         _finalize(session_factory, vid, status="failed",
                   error_code="docker_error", error_msg=str(exc))
     finally:
+        if llm_config is not None:
+            with contextlib.suppress(Exception):
+                revoke_ephemeral_token_in_db(vid)
         shutil.rmtree(workdir, ignore_errors=True)
         with contextlib.suppress(Exception):
             redis.delete(f"job:{vid}:cancel")

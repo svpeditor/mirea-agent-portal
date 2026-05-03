@@ -6,7 +6,10 @@ postgresql+psycopg2://; we normalise to psycopg2 in make_engine().
 """
 from __future__ import annotations
 
-from sqlalchemy import Engine, create_engine
+import uuid
+
+import sqlalchemy as sa
+from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from portal_worker.config import Settings
@@ -24,3 +27,24 @@ def make_engine(settings: Settings) -> Engine:
 def make_session_factory(engine: Engine) -> sessionmaker[Session]:
     """Возвращает sync sessionmaker."""
     return sessionmaker(bind=engine, autocommit=False, autoflush=False)
+
+
+def revoke_ephemeral_token_in_db(job_id: uuid.UUID) -> None:
+    """UPDATE llm_ephemeral_tokens.revoked_at = now() WHERE job_id = ? AND revoked_at IS NULL.
+
+    Идемпотентно. Используется в finally run_job для инвалидации токена.
+    """
+    from portal_worker.config import get_settings
+    settings = get_settings()
+    engine = make_engine(settings)
+    session_factory = make_session_factory(engine)
+    try:
+        with session_factory() as session:
+            session.execute(text("""
+                UPDATE llm_ephemeral_tokens
+                SET revoked_at = now()
+                WHERE job_id = :jid AND revoked_at IS NULL
+            """), {"jid": str(job_id)})
+            session.commit()
+    finally:
+        engine.dispose()
