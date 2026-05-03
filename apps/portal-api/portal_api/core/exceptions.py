@@ -267,3 +267,59 @@ class RetryNotFailedError(AppError):
             message="Retry применим только к версиям в статусе failed.",
             status_code=400,
         )
+
+
+class AgentNotReadyError(AppError):
+    """current_version агента не в status='ready'."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            code="agent_not_ready",
+            message="Текущая версия агента не готова (status != 'ready').",
+            status_code=409,
+        )
+
+
+class JobNotFoundError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="job_not_found",
+            message="Job не найден.",
+            status_code=404,
+        )
+
+
+class JobAlreadyFinishedError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="job_already_finished",
+            message="Job уже завершён.",
+            status_code=409,
+        )
+
+
+class InputsTooLargeError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="inputs_too_large",
+            message="Размер входных данных превышает допустимый лимит.",
+            status_code=413,
+        )
+
+
+class InputFilenameInvalidError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="input_filename_invalid",
+            message="Недопустимое имя файла.",
+            status_code=400,
+        )
+
+
+class ParamsInvalidJsonError(AppError):
+    def __init__(self) -> None:
+        super().__init__(
+            code="params_invalid_json",
+            message="Параметры не являются корректным JSON.",
+            status_code=400,
+        )
