@@ -73,6 +73,7 @@ async def create_job(
     # Стримим каждый файл в FileStore
     file_store = LocalDiskFileStore(root=settings.file_store_local_root)
     total_bytes = 0
+    written_keys: list[str] = []
     for filename, upload in inputs:
         async def _chunks(_u: UploadFile = upload) -> AsyncIterator[bytes]:
             while True:
@@ -83,9 +84,11 @@ async def create_job(
 
         key = f"{job.id}/input/{filename}"
         size, sha = await file_store.put(key, _chunks())
+        written_keys.append(key)
         total_bytes += size
         if total_bytes > settings.max_job_input_bytes:
-            await file_store.delete(key)
+            for k in written_keys:
+                await file_store.delete(k)
             await db.rollback()
             raise InputsTooLargeError()
         db.add(JobFile(

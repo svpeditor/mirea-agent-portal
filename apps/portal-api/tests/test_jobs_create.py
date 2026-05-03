@@ -159,6 +159,7 @@ async def test_create_job_filename_traversal_400(user_client, db, admin_user, tm
 async def test_create_job_inputs_too_large_413(user_client, db, admin_user, tmp_path) -> None:
     from portal_api.deps import get_job_enqueuer, get_settings
     from portal_api.main import app
+    from portal_api.models import Agent
 
     mock_enqueuer = _mock_enqueuer()
     app.dependency_overrides[get_job_enqueuer] = lambda: mock_enqueuer
@@ -172,6 +173,18 @@ async def test_create_job_inputs_too_large_413(user_client, db, admin_user, tmp_
         )
         assert resp.status_code == 413
         assert resp.json()["error"]["code"] == "inputs_too_large"
+
+        # Verify DB rollback — no Job row for this agent
+        agent = (await db.execute(select(Agent).where(Agent.slug == "big"))).scalar_one()
+        jobs_for_agent = (await db.execute(
+            select(Job).where(Job.agent_version_id == agent.current_version_id)
+        )).scalars().all()
+        assert jobs_for_agent == [], "rejected upload should leave no Job row"
+
+        # Verify disk cleanup — no leftover files under tmp_path
+        leftover_files = list(tmp_path.rglob("*"))
+        leftover_files = [f for f in leftover_files if f.is_file()]
+        assert leftover_files == [], f"disk leak: found {leftover_files}"
     finally:
         app.dependency_overrides.pop(get_job_enqueuer, None)
         app.dependency_overrides.pop(get_settings, None)
