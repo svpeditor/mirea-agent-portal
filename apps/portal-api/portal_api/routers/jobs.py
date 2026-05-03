@@ -148,6 +148,8 @@ async def get_job(
         .join(AgentVersion, AgentVersion.id == job.agent_version_id)
         .where(Agent.id == AgentVersion.agent_id)
     )).first()
+    if agent_row is None:
+        raise HTTPException(status_code=404, detail={"error_code": "job_not_found"})
     count, last_seq = await job_event_service.count_for_job(db, job.id)
     return JobDetailOut(
         id=job.id, status=job.status, agent_version_id=job.agent_version_id,
