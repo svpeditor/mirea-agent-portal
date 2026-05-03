@@ -40,3 +40,17 @@ def test_scan_returns_files_with_size_and_sha(tmp_path: Path) -> None:
     assert by_name["a.txt"].size_bytes == 5
     assert by_name["a.txt"].sha256 == hashlib.sha256(b"hello").hexdigest()
     assert by_name["subdir/b.txt"].size_bytes == 5
+
+
+def test_verify_rejects_path_traversal(tmp_path: Path) -> None:
+    with pytest.raises(OutputMissingError, match="invalid"):
+        verify_outputs(tmp_path, declared_filenames=["../etc/passwd"])
+
+
+def test_verify_rejects_symlink_output(tmp_path: Path) -> None:
+    target = tmp_path.parent / "outside.txt"
+    target.write_bytes(b"x")
+    (tmp_path / "report.docx").symlink_to(target)
+    with pytest.raises(OutputMissingError):
+        verify_outputs(tmp_path, declared_filenames=["report.docx"])
+    target.unlink()
