@@ -1,4 +1,4 @@
-"""RQ task: run an agent Docker container and stream events."""
+"""RQ-задача: запустить Docker-контейнер агента и стримить events."""
 from __future__ import annotations
 
 import contextlib
@@ -30,7 +30,7 @@ _BUILD_ROOT = Path("/tmp")  # noqa: S108
 
 
 def recover_orphaned_jobs() -> None:
-    """At worker startup: mark all 'running' jobs as 'failed' (error_code='worker_restart')."""
+    """На старте worker: все 'running' → 'failed' с error_code='worker_restart'."""  # noqa: RUF002
     settings = get_settings()
     engine = make_engine(settings)
     session_factory = make_session_factory(engine)
@@ -53,7 +53,7 @@ def recover_orphaned_jobs() -> None:
 
 
 def run_job(job_id: str) -> None:
-    """Run the given job. Finalizes via UPDATE regardless of outcome."""
+    """Запустить указанный job. Финализирует через UPDATE при любом исходе."""
     settings = get_settings()
     engine = make_engine(settings)
     session_factory = make_session_factory(engine)
@@ -63,7 +63,7 @@ def run_job(job_id: str) -> None:
     workdir = _BUILD_ROOT / f"portal-job-{vid}"
 
     try:
-        # 1. Atomic lock + load joined data
+        # 1. Атомарный лок + загрузить joined-данные
         with session_factory() as session:
             row = session.execute(text("""
                 UPDATE jobs j
@@ -83,7 +83,7 @@ def run_job(job_id: str) -> None:
             params = row.params_jsonb
             agent_slug = row.agent_slug  # noqa: F841 — available for future use
 
-        # 2. Materialize inputs from FileStore (local backend: copy files directly)
+        # 2. Материализовать inputs из FileStore (local = читать с диска)  # noqa: RUF003
         input_src = settings.file_store_local_root / str(vid) / "input"
         output_target_dir = settings.file_store_local_root / str(vid) / "output"
         input_dir = workdir / "input"
@@ -96,7 +96,7 @@ def run_job(job_id: str) -> None:
         params_path = workdir / "params.json"
         params_path.write_text(json.dumps(params))
 
-        # 3. Docker run + stream events
+        # 3. Docker run + стрим events
         seq_counter = 0
 
         def on_event(event: dict) -> None:  # type: ignore[type-arg]
@@ -147,7 +147,7 @@ def run_job(job_id: str) -> None:
                       error_code="timeout", error_msg=str(exc))
             return
 
-        # 4. Verify outputs declared in manifest
+        # 4. Verify outputs объявленных в manifest
         declared = [o.filename for o in manifest.outputs]
         try:
             verify_outputs(output_dir, declared_filenames=declared)
@@ -156,7 +156,7 @@ def run_job(job_id: str) -> None:
                       error_code="output_missing", error_msg=str(exc))
             return
 
-        # 5. Scan ALL produced files, copy to FileStore output area, INSERT job_files
+        # 5. Просканировать ВСЕ файлы → FileStore output + INSERT job_files  # noqa: RUF003
         produced = scan_output_dir(output_dir)
         total_size = sum(p.size_bytes for p in produced)
         if total_size > settings.max_job_output_bytes:
