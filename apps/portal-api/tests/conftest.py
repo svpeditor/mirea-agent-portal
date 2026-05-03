@@ -19,6 +19,7 @@ os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://stub:stub@stub/stub"
 # NB: не выставляем ENVIRONMENT=test через setdefault — это утекает в test_config
 # через os.environ. Settings.environment уже defaults to "dev".
 os.environ.setdefault("COOKIE_SECURE", "false")
+os.environ.setdefault("OPENROUTER_API_KEY", "sk-or-v1-test-stub")
 
 
 @pytest.fixture(scope="session")
