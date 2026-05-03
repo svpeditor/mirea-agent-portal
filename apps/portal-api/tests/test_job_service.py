@@ -6,9 +6,10 @@ import uuid
 import pytest
 
 from portal_api.core.exceptions import (
-    AgentNotFoundError, AgentNotReadyError, JobNotFoundError,
+    AgentNotFoundError,
+    AgentNotReadyError,
 )
-from portal_api.models import Job, JobEvent
+from portal_api.models import JobEvent
 from portal_api.services import job_event_service, job_service
 from tests.factories import make_agent, make_agent_version, make_tab
 
@@ -63,8 +64,8 @@ async def test_create_job_disabled_agent_raises(db, admin_user) -> None:
 @pytest.mark.asyncio
 async def test_create_job_no_current_version_raises(db, admin_user) -> None:
     tab = await make_tab(db, slug="nov-t", name="T", order_idx=1)
-    agent = await make_agent(db, slug="nov", tab_id=tab.id,
-                              created_by_user_id=admin_user.id, enabled=True)
+    _agent = await make_agent(db, slug="nov", tab_id=tab.id,
+                               created_by_user_id=admin_user.id, enabled=True)
     await db.commit()
 
     with pytest.raises(AgentNotFoundError):
@@ -92,7 +93,7 @@ async def test_create_job_version_not_ready_raises(db, admin_user) -> None:
 
 @pytest.mark.asyncio
 async def test_get_job_for_user_owner_sees(db, admin_user) -> None:
-    agent, version = await _enabled_agent_with_ready_version(db, admin_user, slug="own1")
+    agent, _ = await _enabled_agent_with_ready_version(db, admin_user, slug="own1")
     job = await job_service.create_job(
         db, agent_slug=agent.slug, params={}, user_id=admin_user.id,
     )
