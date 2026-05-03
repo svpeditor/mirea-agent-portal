@@ -1,16 +1,13 @@
-"""End-to-end: build echo + run_job → status=ready, артефакты сохранены."""  # noqa: RUF002
+"""End-to-end: build echo + run_job → status=ready, артефакты сохранены."""
 from __future__ import annotations
 
 import json
-import os
 import shutil
 import subprocess
-import uuid
 from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine, text
-
 
 if shutil.which("docker") is None:
     pytest.skip("docker not available", allow_module_level=True)
@@ -18,7 +15,7 @@ if shutil.which("docker") is None:
 
 @pytest.fixture()
 def echo_image_built(tmp_path: Path):
-    """Запустить build_agent_version для echo и вернуть docker_image_tag."""  # noqa: RUF002
+    """Запустить build_agent_version для echo и вернуть docker_image_tag."""
     repo_root = Path(__file__).resolve().parents[3]
     src = repo_root / "agents" / "echo"
     work = tmp_path / "echo-work"
@@ -41,7 +38,7 @@ def echo_image_built(tmp_path: Path):
 
 def _setup_job(pg_container, file_store_root: Path, agent_slug: str,
                sha: str, image_tag: str, params: dict, inputs: dict[str, bytes]):
-    """Insert necessary rows + материализовать input файлы."""  # noqa: RUF002
+    """Insert necessary rows + материализовать input файлы."""
     eng = create_engine(pg_container.get_connection_url())
     manifest = {
         "id": "echo", "name": "Echo", "version": "0.1.0",
@@ -111,7 +108,7 @@ def test_full_run_of_echo(
     settings_env, db_with_schema, pg_container, echo_image_built, tmp_path,
     monkeypatch,
 ) -> None:
-    """E2E: build echo → setup job → run_job → status=ready, output файл сохранён."""  # noqa: RUF002
+    """E2E: build echo → setup job → run_job → status=ready, output файл сохранён."""
     bare, sha = echo_image_built
     from portal_worker.tasks.build_agent import build_agent_version
     eng = create_engine(pg_container.get_connection_url())

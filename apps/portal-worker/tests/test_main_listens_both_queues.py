@@ -1,4 +1,4 @@
-"""main() вызывает оба recover-функции и слушает builds+jobs."""
+"""main() вызывает оба recover-функции и слушает builds+jobs."""  # noqa: RUF002
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
@@ -13,7 +13,7 @@ def test_main_calls_both_recovers_and_listens(monkeypatch) -> None:
 
     with patch("portal_worker.main.recover_orphaned_builds") as mb, \
          patch("portal_worker.main.recover_orphaned_jobs") as mj, \
-         patch("portal_worker.main.Redis.from_url") as mredis, \
+         patch("portal_worker.main.Redis.from_url") as _mredis, \
          patch("portal_worker.main.Worker") as mw:
 
         mw_instance = MagicMock()
@@ -24,6 +24,6 @@ def test_main_calls_both_recovers_and_listens(monkeypatch) -> None:
 
         mb.assert_called_once()
         mj.assert_called_once()
-        args, kwargs = mw.call_args
+        args, _kwargs = mw.call_args
         assert args[0] == ["builds", "jobs"]
         mw_instance.work.assert_called_once_with(with_scheduler=False)
