@@ -206,3 +206,137 @@ async def chat_completions(
     await db.commit()
 
     return response_data
+
+
+async def chat_completions_stream(
+    db: AsyncSession,
+    *,
+    ephemeral_ctx: EphemeralTokenContext,
+    request_body: dict[str, Any],
+    pricing_cache: PricingCache,
+    openrouter_api_key: str,
+    openrouter_base_url: str,
+    request_timeout_s: float,
+):
+    """Async generator: streams SSE chunks к клиенту, парсит usage в последнем chunk."""
+    model = request_body.get("model")
+    if not model:
+        raise ModelNotInWhitelistError("request body has no 'model' field")
+
+    try:
+        await _validate_model_in_whitelist(
+            db, agent_version_id=ephemeral_ctx.agent_version_id, model=model,
+        )
+    except ModelNotInWhitelistError:
+        await _write_usage_log(
+            db, ctx=ephemeral_ctx, model=model, prompt_tokens=0,
+            completion_tokens=0, cost_usd=Decimal("0"), latency_ms=0,
+            status="model_not_in_whitelist", openrouter_request_id=None,
+        )
+        await db.commit()
+        raise
+
+    pricing = await pricing_cache.get(model)
+
+    estimated_prompt = _estimate_prompt_tokens(request_body.get("messages", []))
+    estimated_completion = _estimate_completion_tokens(request_body, pricing)
+    estimated_cost = _calc_cost(pricing, estimated_prompt, estimated_completion)
+
+    try:
+        await llm_quota.preflight(
+            db, user_id=ephemeral_ctx.user_id, job_id=ephemeral_ctx.job_id,
+            estimated_cost=estimated_cost,
+        )
+        await db.commit()
+    except AppError as exc:
+        await _write_usage_log(
+            db, ctx=ephemeral_ctx, model=model, prompt_tokens=0,
+            completion_tokens=0, cost_usd=Decimal("0"), latency_ms=0,
+            status=exc.code, openrouter_request_id=None,
+        )
+        await db.commit()
+        raise
+
+    forwarded_body = dict(request_body)
+    forwarded_body["stream"] = True
+    stream_options = dict(forwarded_body.get("stream_options") or {})
+    stream_options["include_usage"] = True
+    forwarded_body["stream_options"] = stream_options
+
+    start = time.monotonic()
+    upstream_request_id: str | None = None
+    parsed_usage: dict[str, int] | None = None
+    streamed_content_size = 0
+    error_status: str | None = None
+
+    try:
+        async with httpx.AsyncClient(timeout=request_timeout_s) as client:
+            async with client.stream(
+                "POST", f"{openrouter_base_url}/chat/completions",
+                headers={"Authorization": f"Bearer {openrouter_api_key}"},
+                json=forwarded_body,
+            ) as resp:
+                upstream_request_id = resp.headers.get("x-request-id")
+                if resp.status_code >= 500:
+                    error_status = "openrouter_upstream_error"
+                elif resp.status_code >= 400:
+                    error_status = f"openrouter_{resp.status_code}"
+
+                async for raw_chunk in resp.aiter_bytes():
+                    streamed_content_size += len(raw_chunk)
+                    yield raw_chunk
+                    if parsed_usage is None:
+                        for line in raw_chunk.split(b"\n"):
+                            if not line.startswith(b"data: ") or line == b"data: [DONE]":
+                                continue
+                            payload = line[6:].strip()
+                            if not payload:
+                                continue
+                            try:
+                                obj = json.loads(payload)
+                            except json.JSONDecodeError:
+                                continue
+                            if "usage" in obj and obj["usage"]:
+                                parsed_usage = obj["usage"]
+                                break
+    except httpx.TimeoutException:
+        error_status = "openrouter_timeout"
+
+    latency_ms = int((time.monotonic() - start) * 1000)
+
+    if error_status:
+        await _write_usage_log(
+            db, ctx=ephemeral_ctx, model=model, prompt_tokens=0,
+            completion_tokens=0, cost_usd=Decimal("0"), latency_ms=latency_ms,
+            status=error_status, openrouter_request_id=upstream_request_id,
+        )
+        await db.commit()
+        if error_status == "openrouter_timeout":
+            raise OpenRouterTimeoutError(f"OpenRouter timeout after {request_timeout_s}s")
+        if error_status == "openrouter_upstream_error":
+            raise OpenRouterUpstreamError("OpenRouter 5xx during streaming")
+        return
+
+    if parsed_usage:
+        prompt_tokens = int(parsed_usage.get("prompt_tokens", 0))
+        completion_tokens = int(parsed_usage.get("completion_tokens", 0))
+    else:
+        logger.warning(
+            "llm_stream_no_usage_chunk", job_id=str(ephemeral_ctx.job_id),
+            streamed_size=streamed_content_size,
+        )
+        prompt_tokens = estimated_prompt
+        completion_tokens = max(1, streamed_content_size // 3)
+
+    real_cost = _calc_cost(pricing, prompt_tokens, completion_tokens)
+    await _write_usage_log(
+        db, ctx=ephemeral_ctx, model=model,
+        prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,
+        cost_usd=real_cost, latency_ms=latency_ms,
+        status="success", openrouter_request_id=upstream_request_id,
+    )
+    await llm_quota.postflight(
+        db, user_id=ephemeral_ctx.user_id, job_id=ephemeral_ctx.job_id,
+        real_cost=real_cost,
+    )
+    await db.commit()
