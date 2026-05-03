@@ -14,6 +14,7 @@ services:
       retries: 10
     ports:
       - "127.0.0.1:5433:5432"
+    networks: [portal-net]
 
   redis:
     image: redis:7-alpine
@@ -24,6 +25,7 @@ services:
       interval: 3s
       timeout: 3s
       retries: 10
+    networks: [portal-net]
 
   api:
     build:
@@ -39,6 +41,9 @@ services:
       COOKIE_SECURE: "false"
       ENVIRONMENT: ${ENVIRONMENT:-dev}
       RELOAD: ${RELOAD:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      LLM_ALLOWED_MODELS: ${LLM_ALLOWED_MODELS}
+      LLM_PROXY_BASE_URL: http://api:8000/llm/v1
     ports:
       - "8000:8000"
     volumes:
@@ -48,6 +53,9 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       redis:    { condition: service_healthy }
+    networks:
+      - portal-net
+      - portal-agents-net
 
   worker:
     build:
@@ -58,6 +66,9 @@ services:
       REDIS_URL: redis://redis:6379/0
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PORTAL_SDK_PATH: /portal-sdk
+      LLM_PROXY_BASE_URL: http://api:8000/llm/v1
+      LLM_AGENTS_NETWORK_NAME: portal-agents-net
+      LLM_ALLOWED_MODELS: ${LLM_ALLOWED_MODELS}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./packages/portal-sdk-python:/portal-sdk:ro
@@ -65,8 +76,21 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       redis:    { condition: service_healthy }
+    networks:
+      - portal-net
 
 volumes:
   postgres_data:
   redis_data:
   portal_files:
+
+networks:
+  portal-net:
+    driver: bridge
+  portal-agents-net:
+    driver: bridge
+    internal: true
+    enable_ipv6: false
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
