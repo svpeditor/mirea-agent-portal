@@ -301,3 +301,52 @@ curl -s -b /tmp/cookies.txt -X POST -H "Origin: $ORIGIN" \
 docker compose exec redis redis-cli lrange rq:queue:jobs 0 -1
 docker compose exec redis redis-cli pubsub channels 'job:*'
 ```
+
+## LLM-прокси (1.2.4)
+
+Прокси совместим с OpenAI/OpenRouter API. Используется агентами для LLM-вызовов.
+
+### Эндпоинты
+
+- `POST /llm/v1/chat/completions` — chat completion (non-stream + stream)
+- `POST /llm/v1/completions` — legacy completion
+- `GET /llm/v1/models` — whitelist текущего агента
+- Прочие OpenAI-эндпоинты → 501
+
+Auth: `Authorization: Bearer <ephemeral_token>`. Ephemeral-токен генерится при
+создании job для агента с `runtime.llm` (см. `docs/contract.md`).
+
+### Pricing
+
+Pricing моделей кешируется в memory из `https://openrouter.ai/api/v1/models`
+с фоновым refresh каждые 6 часов (`LLM_PRICING_REFRESH_INTERVAL_SECONDS`).
+При cache miss — forced refresh; при недоступности OpenRouter — worst-case
+fallback `$0.0001/token` (порядок claude-opus, чтобы скорее блокировать чем недосчитать).
+
+### Конфигурация
+
+```dotenv
+OPENROUTER_API_KEY=sk-or-v1-...
+LLM_ALLOWED_MODELS=deepseek/deepseek-chat,anthropic/claude-haiku-4-5
+LLM_DEFAULT_USER_QUOTA_USD=5.0
+LLM_DEFAULT_PER_JOB_CAP_USD=0.5
+LLM_PROXY_BASE_URL=http://api:8000/llm/v1
+```
+
+### Квоты (для админа)
+
+```bash
+# Aggregation usage:
+curl -s http://localhost:8000/api/admin/usage \
+  -b "access_token=$ADMIN_TOKEN" | jq
+
+# Изменить квоту юзера:
+curl -X PATCH http://localhost:8000/api/admin/users/$USER_ID/quota \
+  -b "access_token=$ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"monthly_limit_usd": "20.0", "per_job_cap_usd": "2.0"}'
+
+# Сбросить period_used:
+curl -X POST http://localhost:8000/api/admin/users/$USER_ID/quota/reset \
+  -b "access_token=$ADMIN_TOKEN"
+```
