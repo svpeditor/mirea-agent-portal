@@ -88,6 +88,8 @@ def run_job(job_id: str) -> None:
         output_target_dir = settings.file_store_local_root / str(vid) / "output"
         input_dir = workdir / "input"
         output_dir = workdir / "output"
+        # Clean any stale workdir from prior crash on same host before fresh mkdir
+        shutil.rmtree(workdir, ignore_errors=True)
         input_dir.mkdir(parents=True)
         output_dir.mkdir(parents=True)
         if input_src.exists():
@@ -195,6 +197,8 @@ def run_job(job_id: str) -> None:
         shutil.rmtree(workdir, ignore_errors=True)
         with contextlib.suppress(Exception):
             redis.delete(f"job:{vid}:cancel")
+        with contextlib.suppress(Exception):
+            redis.close()
         engine.dispose()
 
 
