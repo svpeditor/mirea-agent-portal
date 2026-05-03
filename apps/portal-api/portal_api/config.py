@@ -66,7 +66,7 @@ class Settings(BaseSettings):
     llm_default_per_job_cap_usd: Decimal = Decimal("0.5000")
     llm_pricing_refresh_interval_seconds: int = 21600
     llm_request_timeout_seconds: int = 30
-    llm_proxy_base_url: str = "http://portal-api:8000/llm/v1"
+    llm_proxy_base_url: str = "http://api:8000/llm/v1"
 
     @field_validator("llm_allowed_models", mode="before")
     @classmethod

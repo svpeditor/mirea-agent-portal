@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     file_store_local_root: Path = Path("/var/portal-files")
 
     # LLM proxy (1.2.4)
-    llm_proxy_base_url: str = "http://portal-api:8000/llm/v1"
+    llm_proxy_base_url: str = "http://api:8000/llm/v1"
     llm_agents_network_name: str = "portal-agents-net"
     llm_allowed_models: Annotated[list[str], NoDecode] = []
 

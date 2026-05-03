@@ -112,4 +112,4 @@ def test_settings_loads_llm_proxy_defaults(monkeypatch) -> None:
     assert s.llm_default_per_job_cap_usd == Decimal("0.5000")
     assert s.llm_pricing_refresh_interval_seconds == 21600
     assert s.llm_request_timeout_seconds == 30
-    assert s.llm_proxy_base_url == "http://portal-api:8000/llm/v1"
+    assert s.llm_proxy_base_url == "http://api:8000/llm/v1"

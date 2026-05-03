@@ -15,7 +15,7 @@ def load_and_validate_manifest(
     repo_dir: Path,
     agent_slug: str,
     allowed_base_images: list[str],
-    allowed_llm_models: list[str] | None = None,
+    allowed_llm_models: list[str],
 ) -> Manifest:
     """Парсит manifest.yaml + проверяет id_mismatch, base_image_whitelist и runtime.llm."""
     manifest_path = repo_dir / "manifest.yaml"
@@ -63,12 +63,11 @@ def load_and_validate_manifest(
                 "llm_models_empty",
                 "runtime.llm.models must be a non-empty list",
             )
-        whitelist = allowed_llm_models or []
         for model in manifest.runtime.llm.models:
-            if model not in whitelist:
+            if model not in allowed_llm_models:
                 raise BuildError(
                     "model_not_allowed",
-                    f"model {model!r} is not in global whitelist {whitelist}",
+                    f"model {model!r} is not in global whitelist {allowed_llm_models}",
                 )
 
     return manifest

@@ -76,6 +76,8 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       redis:    { condition: service_healthy }
+    # worker не в portal-agents-net: agent-контейнеры создаются Docker SDK
+    # с явным network=portal-agents-net (см. docker_runner.py).
     networks:
       - portal-net
 
