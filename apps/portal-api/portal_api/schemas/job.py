@@ -1,4 +1,12 @@
-"""DTO для jobs."""
+"""DTO для jobs.
+
+JobListItemOut и JobFileOut поддерживают `model_validate(orm)` через
+`from_attributes=True`. Остальные DTO (JobCreatedOut, JobDetailOut,
+JobEventOut) собираются в service layer вручную из-за переименования полей
+(event_type→type, payload_jsonb→payload, params_jsonb→params,
+output_summary_jsonb→output_summary) или service-computed полей
+(agent_slug, events_count, last_event_seq, agent).
+"""
 from __future__ import annotations
 
 import uuid
@@ -9,6 +17,8 @@ from pydantic import BaseModel, ConfigDict
 
 
 class JobCreatedOut(BaseModel):
+    """Ответ POST /api/agents/{slug}/jobs. agent_slug → join, не from_attributes."""
+
     id: uuid.UUID
     status: str
     agent_slug: str
@@ -31,6 +41,11 @@ class JobAgentBrief(BaseModel):
 
 
 class JobDetailOut(BaseModel):
+    """Ответ GET /api/jobs/{id}.
+
+    params/output_summary переименованы; events_count/last_event_seq/agent — отдельные queries.
+    """
+
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
     status: str
@@ -49,6 +64,11 @@ class JobDetailOut(BaseModel):
 
 
 class JobEventOut(BaseModel):
+    """Один event для GET /api/jobs/{id}/events и WS stream.
+
+    type/payload — переименования, конструировать вручную.
+    """
+
     seq: int
     ts: datetime
     type: str
