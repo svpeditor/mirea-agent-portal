@@ -9,7 +9,8 @@ import jwt
 from fastapi import Cookie, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from portal_api.config import Settings, get_settings
+from portal_api.config import Settings
+from portal_api.config import get_settings as get_settings
 from portal_api.core.exceptions import Forbidden, NotAuthenticated
 from portal_api.core.security import decode_token
 from portal_api.db import get_db as _get_db

@@ -163,7 +163,7 @@ async def test_create_job_inputs_too_large_413(user_client, db, admin_user, tmp_
 
     mock_enqueuer = _mock_enqueuer()
     app.dependency_overrides[get_job_enqueuer] = lambda: mock_enqueuer
-    app.dependency_overrides[get_settings] = _make_settings_override(tmp_path, max_job_input_bytes=10)
+    app.dependency_overrides[get_settings] = _make_settings_override(tmp_path, max_job_input_bytes=10)  # noqa: E501
 
     try:
         await _ready_agent(db, admin_user, slug="big")

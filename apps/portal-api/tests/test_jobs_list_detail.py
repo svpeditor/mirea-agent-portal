@@ -1,8 +1,6 @@
 """GET /api/jobs + GET /api/jobs/{id}."""
 from __future__ import annotations
 
-import io
-import json
 from unittest.mock import MagicMock
 
 import pytest
