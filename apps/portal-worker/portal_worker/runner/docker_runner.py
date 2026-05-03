@@ -67,11 +67,14 @@ def run_agent_container(
     start_ts = time.monotonic()
     cancelled = False
     timed_out = False
+    stream_done = False  # set by main thread when stdout stream is fully drained
 
     def _watcher() -> None:
         nonlocal cancelled, timed_out
         while True:
             time.sleep(1.0)
+            if stream_done:           # stream drained = container effectively done
+                return
             try:
                 container.reload()
                 if container.status in ("exited", "dead"):
@@ -99,6 +102,7 @@ def run_agent_container(
             flush_on_eof=True,
         ):
             on_event(event)
+        stream_done = True            # signal watcher to back off before container.wait
         # Дождаться exit
         result = container.wait(timeout=timeout_seconds + 30)
         exit_code = int(result.get("StatusCode", -1))
