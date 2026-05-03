@@ -36,6 +36,7 @@ dev = [
     "types-pyjwt>=1.7,<2",
     "types-aiofiles>=23,<25",
     "websockets>=13,<14",
+    "respx>=0.21,<1",
 ]
 
 [build-system]

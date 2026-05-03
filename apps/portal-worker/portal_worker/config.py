@@ -4,7 +4,7 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import PostgresDsn, RedisDsn
+from pydantic import PostgresDsn, RedisDsn, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -46,6 +46,18 @@ class Settings(BaseSettings):
     max_job_output_bytes: int = 1024**3
     job_timeout_seconds: int = 1800
     file_store_local_root: Path = Path("/var/portal-files")
+
+    # LLM proxy (1.2.4)
+    llm_proxy_base_url: str = "http://portal-api:8000/llm/v1"
+    llm_agents_network_name: str = "portal-agents-net"
+    llm_allowed_models: list[str] | str = []  # noqa: RUF002
+
+    @field_validator("llm_allowed_models", mode="before")
+    @classmethod
+    def _split_csv_models(cls, v: object) -> object:
+        if isinstance(v, str):
+            return [m.strip() for m in v.split(",") if m.strip()]
+        return v
 
     # Логирование
     log_level: str = "INFO"
