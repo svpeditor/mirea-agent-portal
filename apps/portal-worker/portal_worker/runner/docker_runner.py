@@ -12,6 +12,7 @@ import docker
 import structlog
 
 from portal_worker.runner.jsonl_parser import parse_jsonl_stream
+from portal_worker.runner.llm_runtime_config import LlmRuntimeConfig
 
 
 class RunTimeout(Exception):  # noqa: N818
@@ -34,6 +35,7 @@ def run_agent_container(
     cancel_check: Callable[[], bool],
     on_event: Callable[[dict[str, Any]], None],
     labels: dict[str, str],
+    llm_config: LlmRuntimeConfig | None = None,
 ) -> int:
     """Запустить контейнер, парсить stdout, ёмитить events. Возвращает exit_code.
 
@@ -43,10 +45,22 @@ def run_agent_container(
     """
     structlog.get_logger().bind(image=image_tag)  # reserved for future log calls
     client = docker.from_env()
+
+    env: dict[str, str] = {
+        "PARAMS_FILE": "/var/agent/params.json",
+        "INPUT_DIR":   "/var/agent/input",
+        "OUTPUT_DIR":  "/var/agent/output",
+    }
+    if llm_config is None:
+        network_kwargs: dict[str, Any] = {"network_mode": "none"}
+    else:
+        network_kwargs = {"network": llm_config.agents_network_name}
+        env["OPENROUTER_API_KEY"] = llm_config.ephemeral_token
+        env["OPENROUTER_BASE_URL"] = llm_config.proxy_base_url
+
     container = client.containers.run(
         image=image_tag,
         detach=True,
-        network_mode="none",
         read_only=True,
         tmpfs={"/tmp": "size=64m,mode=1777"},  # noqa: S108
         mem_limit=f"{memory_mb}m",
@@ -56,12 +70,9 @@ def run_agent_container(
             str(output_dir): {"bind": "/var/agent/output",     "mode": "rw"},
             str(params_path):{"bind": "/var/agent/params.json","mode": "ro"},
         },
-        environment={
-            "PARAMS_FILE": "/var/agent/params.json",
-            "INPUT_DIR":   "/var/agent/input",
-            "OUTPUT_DIR":  "/var/agent/output",
-        },
+        environment=env,
         labels=labels,
+        **network_kwargs,
     )
 
     start_ts = time.monotonic()
