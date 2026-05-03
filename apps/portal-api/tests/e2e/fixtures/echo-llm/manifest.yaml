@@ -1,0 +1,26 @@
+id: echo-llm
+name: Echo LLM
+version: 0.1.0
+category: научная-работа
+short_description: "Тестовый агент: один deepseek-вызов через прокси, для E2E."
+outputs:
+  - id: report
+    type: json
+    label: "Ответ"
+    filename: "report.json"
+    primary: true
+
+runtime:
+  docker:
+    base_image: "python:3.12-slim"
+    setup:
+      - "pip install -r requirements.txt"
+    entrypoint: ["python", "agent.py"]
+  llm:
+    provider: openrouter
+    models:
+      - "deepseek/deepseek-chat"
+  limits:
+    max_runtime_minutes: 5
+    max_memory_mb: 256
+    max_cpu_cores: 1

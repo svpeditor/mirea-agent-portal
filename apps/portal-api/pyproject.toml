@@ -51,7 +51,10 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
 testpaths = ["tests"]
-addopts = "-ra --strict-markers"
+addopts = "-ra --strict-markers -m \"not openrouter_live\""
+markers = [
+    "openrouter_live: реальный hit OpenRouter API (запуск только через -m openrouter_live)",
+]
 
 [tool.ruff]
 line-length = 100
