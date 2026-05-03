@@ -323,3 +323,45 @@ class ParamsInvalidJsonError(AppError):
             message="Параметры не являются корректным JSON.",
             status_code=400,
         )
+
+
+class QuotaExhaustedError(AppError):
+    """Месячная квота юзера исчерпана."""
+
+    def __init__(self, message: str = "Месячная квота исчерпана.") -> None:
+        super().__init__(code="quota_exhausted", message=message, status_code=402)
+
+
+class PerJobCapExceededError(AppError):
+    """На текущем job уже потрачено сверх per_job_cap_usd."""
+
+    def __init__(self, message: str = "Превышен лимит стоимости на один job.") -> None:
+        super().__init__(code="per_job_cap_exceeded", message=message, status_code=402)
+
+
+class ModelNotInWhitelistError(AppError):
+    """Модель из request.body не разрешена manifest агента."""
+
+    def __init__(self, message: str = "Модель не разрешена для этого агента.") -> None:
+        super().__init__(code="model_not_in_whitelist", message=message, status_code=403)
+
+
+class InvalidEphemeralTokenError(AppError):
+    """Bearer token не существует / истёк / отозван."""
+
+    def __init__(self, message: str = "Ephemeral-токен недействителен или истёк.") -> None:
+        super().__init__(code="invalid_ephemeral_token", message=message, status_code=401)
+
+
+class OpenRouterUpstreamError(AppError):
+    """OpenRouter вернул 5xx."""
+
+    def __init__(self, message: str = "Ошибка upstream OpenRouter.") -> None:
+        super().__init__(code="openrouter_upstream_error", message=message, status_code=502)
+
+
+class OpenRouterTimeoutError(AppError):
+    """OpenRouter не ответил за timeout."""
+
+    def __init__(self, message: str = "OpenRouter не ответил за отведённое время.") -> None:
+        super().__init__(code="openrouter_timeout", message=message, status_code=504)
