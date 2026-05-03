@@ -7,6 +7,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from portal_api.schemas.llm import UserQuotaSchema
+
 
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -17,6 +19,12 @@ class UserOut(BaseModel):
     role: str
     monthly_budget_usd: Decimal
     created_at: datetime
+
+
+class UserAdminOut(UserOut):
+    """Расширенный UserOut для admin-эндпоинтов — включает quota."""
+
+    quota: UserQuotaSchema | None = None
 
 
 class UserUpdate(BaseModel):

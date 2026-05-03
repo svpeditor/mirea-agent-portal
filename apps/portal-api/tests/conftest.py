@@ -249,6 +249,14 @@ async def normal_user_token(client: AsyncClient, normal_user) -> str:  # type: i
     return create_access_token(user_id=str(normal_user.id), role=normal_user.role)
 
 
+@pytest_asyncio.fixture
+async def admin_token(client: AsyncClient, admin_user) -> str:  # type: ignore[no-untyped-def]
+    """access_token для admin_user (JWT строка для Cookie-заголовка)."""
+    from portal_api.core.security import create_access_token
+
+    return create_access_token(user_id=str(admin_user.id), role=admin_user.role)
+
+
 @pytest.fixture
 def db_sessionmaker(_migrated: None) -> async_sessionmaker[AsyncSession]:
     """async_sessionmaker, подключённый к тестовому Postgres.
