@@ -214,3 +214,90 @@ docker images | grep portal/agent-echo
 ```bash
 docker compose exec redis redis-cli lrange rq:queue:builds 0 -1
 ```
+
+## Запуск задачи (1.2.3)
+
+После того как агент `echo` зарегистрирован и в `status=ready` (см. предыдущий раздел), можно отправить ему job с input-файлами и наблюдать прогресс по WebSocket.
+
+### Подготовка
+
+```bash
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=ChangeMeOnFirstLogin
+BASE=http://localhost:8000
+ORIGIN=http://localhost:8000
+
+curl -s -c /tmp/cookies.txt -X POST "$BASE/api/auth/login" \
+  -H "Content-Type: application/json" -H "Origin: $ORIGIN" \
+  -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}"
+```
+
+### 1. Создать job (multipart с input-файлом)
+
+```bash
+echo "hello world" > /tmp/input.txt
+
+curl -s -b /tmp/cookies.txt -X POST "$BASE/api/agents/echo/jobs" \
+  -H "Origin: $ORIGIN" \
+  -F 'params={"k":"v"}' \
+  -F 'inputs[hello.txt]=@/tmp/input.txt' \
+  | tee /tmp/job.json
+```
+
+Ответ:
+```json
+{"job": {"id": "<JOB_ID>", "status": "queued", "agent_slug": "echo"}}
+```
+
+### 2. Подключиться к WebSocket и наблюдать events
+
+```bash
+JOB_ID=$(python3 -c "import json; print(json.load(open('/tmp/job.json'))['job']['id'])")
+
+# Извлечь cookie для wscat
+COOKIE=$(awk -F'\t' '/portal_access/ {print $6"="$7}' /tmp/cookies.txt | head -1)
+
+wscat -c "ws://localhost:8000/api/jobs/$JOB_ID/stream" \
+  -H "Cookie: $COOKIE"
+```
+
+В WS видны events: `{"type":"resync","events":[...]}` (initial), затем построчно от агента (started/progress/result).
+
+### 3. Опрос REST-фоллбэком (если без wscat)
+
+```bash
+for i in $(seq 1 24); do
+  STATUS=$(curl -s -b /tmp/cookies.txt -H "Origin: $ORIGIN" \
+    "$BASE/api/jobs/$JOB_ID" | python3 -c "import json,sys;print(json.load(sys.stdin)['status'])")
+  echo "[$i] $STATUS"
+  [ "$STATUS" = "ready" ] && break
+  [ "$STATUS" = "failed" ] && { echo "FAILED"; exit 1; }
+  sleep 2
+done
+```
+
+### 4. Скачать output
+
+```bash
+# Detail endpoint не возвращает file_id — дёргаем через DB (psql) или ждём UI.
+# Для CLI-демо — взять из admin-API в будущем; пока пример прямой ссылки:
+curl -s -b /tmp/cookies.txt -H "Origin: $ORIGIN" \
+  "$BASE/api/jobs/$JOB_ID/outputs/<FILE_ID>" \
+  -o /tmp/output.bin
+ls -lh /tmp/output.bin
+```
+
+### 5. Cancel посреди выполнения
+
+```bash
+curl -s -b /tmp/cookies.txt -X POST -H "Origin: $ORIGIN" \
+  "$BASE/api/jobs/$JOB_ID/cancel"
+# → {"id":"...","status":"cancelled"} (или running, если worker ещё не обработал флаг)
+```
+
+### Очередь Redis напрямую
+
+```bash
+docker compose exec redis redis-cli lrange rq:queue:jobs 0 -1
+docker compose exec redis redis-cli pubsub channels 'job:*'
+```
