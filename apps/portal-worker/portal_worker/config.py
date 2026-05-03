@@ -41,6 +41,12 @@ class Settings(BaseSettings):
         "python:3.13-slim",
     ]
 
+    # Лимиты и хранилище для jobs (1.2.3)
+    max_job_input_bytes: int = 100 * 1024 * 1024
+    max_job_output_bytes: int = 1024**3
+    job_timeout_seconds: int = 1800
+    file_store_local_root: Path = Path("/var/portal-files")
+
     # Логирование
     log_level: str = "INFO"
 

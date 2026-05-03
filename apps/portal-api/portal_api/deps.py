@@ -9,12 +9,14 @@ import jwt
 from fastapi import Cookie, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from portal_api.config import Settings, get_settings
+from portal_api.config import Settings
+from portal_api.config import get_settings as get_settings
 from portal_api.core.exceptions import Forbidden, NotAuthenticated
 from portal_api.core.security import decode_token
 from portal_api.db import get_db as _get_db
 from portal_api.models import User
 from portal_api.services.build_enqueue import BuildEnqueuer
+from portal_api.services.job_enqueue import JobEnqueuer
 
 
 # Реэкспорт под именем без префикса — чтобы override в тестах был один-в-один
@@ -56,3 +58,9 @@ async def require_admin(user: User = Depends(get_current_user)) -> User:
 
 def get_build_enqueuer(settings: Settings = Depends(get_settings)) -> BuildEnqueuer:
     return BuildEnqueuer(str(settings.redis_url))
+
+
+def get_job_enqueuer(
+    settings: Settings = Depends(get_settings),
+) -> JobEnqueuer:
+    return JobEnqueuer(redis_url=str(settings.redis_url))

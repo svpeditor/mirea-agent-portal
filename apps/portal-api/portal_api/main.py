@@ -24,6 +24,8 @@ from portal_api.routers import (
     admin_users,
     auth,
     health,
+    jobs,
+    jobs_ws,
     me,
     public_agents,
     public_tabs,
@@ -96,3 +98,5 @@ app.include_router(admin_agents.router, prefix="/api")
 app.include_router(admin_agent_versions.router, prefix="/api")
 app.include_router(public_tabs.router, prefix="/api")
 app.include_router(public_agents.router, prefix="/api")
+app.include_router(jobs.router, prefix="/api")
+app.include_router(jobs_ws.router, prefix="/api")
