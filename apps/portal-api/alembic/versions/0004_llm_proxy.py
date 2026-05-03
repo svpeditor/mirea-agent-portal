@@ -36,6 +36,12 @@ def upgrade() -> None:
         FROM users u
     """))
 
+    op.execute(
+        "CREATE TRIGGER user_quotas_set_updated_at "
+        "BEFORE UPDATE ON user_quotas FOR EACH ROW "
+        "EXECUTE FUNCTION set_updated_at()"
+    )
+
     op.create_table(
         "llm_ephemeral_tokens",
         sa.Column("token_hash", sa.String(64), primary_key=True),
@@ -93,4 +99,5 @@ def downgrade() -> None:
     op.drop_index("llm_ephemeral_tokens_expires_at_idx", table_name="llm_ephemeral_tokens")
     op.drop_index("llm_ephemeral_tokens_job_id_idx", table_name="llm_ephemeral_tokens")
     op.drop_table("llm_ephemeral_tokens")
+    op.execute("DROP TRIGGER IF EXISTS user_quotas_set_updated_at ON user_quotas")
     op.drop_table("user_quotas")
