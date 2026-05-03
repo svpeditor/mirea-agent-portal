@@ -365,3 +365,10 @@ class OpenRouterTimeoutError(AppError):
 
     def __init__(self, message: str = "OpenRouter не ответил за отведённое время.") -> None:
         super().__init__(code="openrouter_timeout", message=message, status_code=504)
+
+
+class NotImplementedAppError(AppError):
+    """OpenAI-эндпоинт не реализован прокси."""
+
+    def __init__(self, message: str = "Endpoint not implemented") -> None:
+        super().__init__(code="not_implemented", message=message, status_code=501)

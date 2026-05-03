@@ -1,6 +1,7 @@
 """FastAPI app — точка входа."""
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -30,6 +31,8 @@ from portal_api.routers import (
     public_agents,
     public_tabs,
 )
+from portal_api.routers.llm_proxy import router as llm_proxy_router
+from portal_api.services.llm_pricing import PricingCache, periodic_refresh
 
 
 @asynccontextmanager
@@ -40,7 +43,23 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     async with session_local() as session:
         await bootstrap_admin(session, settings)
         await bootstrap_tabs(session)
-    yield
+    cache = PricingCache(
+        base_url=settings.openrouter_base_url,
+        timeout_s=settings.llm_request_timeout_seconds,
+    )
+    await cache.refresh()
+    app.state.pricing_cache = cache
+    refresh_task = asyncio.create_task(
+        periodic_refresh(cache, settings.llm_pricing_refresh_interval_seconds)
+    )
+    try:
+        yield
+    finally:
+        refresh_task.cancel()
+        try:
+            await refresh_task
+        except asyncio.CancelledError:
+            pass
 
 
 app = FastAPI(title="MIREA Agent Portal API", version="0.1.0", lifespan=lifespan)
@@ -100,3 +119,4 @@ app.include_router(public_tabs.router, prefix="/api")
 app.include_router(public_agents.router, prefix="/api")
 app.include_router(jobs.router, prefix="/api")
 app.include_router(jobs_ws.router, prefix="/api")
+app.include_router(llm_proxy_router)
