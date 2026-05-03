@@ -274,3 +274,108 @@ contract_version: "0.1"
 
 - Issue в репозитории `mirea-agent-portal` с тэгом `contract`
 - Канал команды агентов в Telegram (если есть)
+
+---
+
+## 7. LLM-прокси (с версии портала 1.2.4)
+
+Если в `manifest.yaml` указан `runtime.llm`, портал даёт агенту доступ к OpenRouter
+через свой прокси с pre-flight проверкой квоты.
+
+### Что меняется в окружении агента
+
+| env | Что |
+|---|---|
+| `OPENROUTER_API_KEY` | Ephemeral-ключ, уникальный на каждый job. Действует только пока job активен. |
+| `OPENROUTER_BASE_URL` | URL прокси портала (`http://api:8000/llm/v1` в dev-стеке). Использовать как `base_url` в openai SDK. |
+
+### Пример агента на Python
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    api_key=os.environ["OPENROUTER_API_KEY"],
+    base_url=os.environ["OPENROUTER_BASE_URL"],
+)
+
+resp = client.chat.completions.create(
+    model="deepseek/deepseek-chat",
+    messages=[{"role": "user", "content": "Привет"}],
+    max_tokens=200,         # ← важно! см. секцию ниже
+)
+```
+
+### Поддерживаемые эндпоинты
+
+- `POST /llm/v1/chat/completions` (включая `stream: true`)
+- `POST /llm/v1/completions` (legacy)
+- `GET /llm/v1/models` — возвращает только модели из вашего `runtime.llm.models`
+
+Прочие OpenAI-эндпоинты (`embeddings`, `images`, `audio`, `files`, `fine-tuning`, `moderations`)
+вернут `501 Not Implemented`.
+
+### Whitelist моделей
+
+В `manifest.yaml` укажите конкретные модели, которые агент будет использовать:
+
+```yaml
+runtime:
+  llm:
+    provider: openrouter
+    models:
+      - "deepseek/deepseek-chat"          # дешёвая, доступна всем
+      - "anthropic/claude-haiku-4-5"      # требует апрува админа портала
+```
+
+Если в request body придёт модель не из этого списка — `403 model_not_in_whitelist`.
+
+Глобальный whitelist моделей задаётся админом портала (env `LLM_ALLOWED_MODELS`).
+Build agent_version упадёт с `model_not_allowed`, если в манифесте указана модель,
+которой нет в глобальном whitelist'е.
+
+### Квоты
+
+- **Per-user в месяц:** дефолт `$5.0` USD. Reset 1-го числа каждого месяца в 00:00 МСК.
+- **Per-job cap:** дефолт `$0.5` USD. Защищает от runaway-агента.
+- При превышении — `402 quota_exhausted` или `402 per_job_cap_exceeded`.
+
+Преподаватели/админы могут увеличить квоту индивидуальному юзеру через
+`PATCH /api/admin/users/{id}/quota`.
+
+### Важно: всегда указывайте `max_tokens`
+
+Прокси делает pre-flight оценку стоимости запроса. Если `max_tokens` не указан,
+прокси оценивает completion как "весь контекст модели" (worst case) — это может
+зарезать запрос с 402 ещё до отправки в OpenRouter, даже если реальный ответ
+был бы дешёвым.
+
+Всегда указывайте `max_tokens` равным разумной верхней границе ответа.
+
+### Error codes
+
+| Код | HTTP | Когда |
+|---|---|---|
+| `invalid_ephemeral_token` | 401 | Bearer отсутствует / истёк / отозван |
+| `quota_exhausted` | 402 | Месячная квота юзера исчерпана |
+| `per_job_cap_exceeded` | 402 | На текущем job уже потрачено сверх cap |
+| `model_not_in_whitelist` | 403 | Запрошенная модель не в `manifest.runtime.llm.models` |
+| `not_implemented` | 501 | Эндпоинт не поддерживается прокси |
+| `openrouter_upstream_error` | 502 | OpenRouter вернул 5xx |
+| `openrouter_timeout` | 504 | OpenRouter не ответил за 30с |
+
+Формат: `{"error": {"code": "...", "message": "..."}}`.
+
+### Стриминг
+
+`stream: true` в request body работает прозрачно. Прокси добавит
+`stream_options.include_usage = true` чтобы посчитать стоимость, это никак не
+влияет на формат стрима.
+
+### Изоляция сети
+
+Контейнер агента запускается в Docker-сети `portal-agents-net` с флагом
+`internal: true`. Это означает: агент **физически не имеет выхода в интернет**,
+кроме как до прокси портала. Любая попытка стучаться напрямую на
+`https://openrouter.ai` или куда-либо ещё закончится timeout'ом на уровне сети.

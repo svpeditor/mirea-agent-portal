@@ -124,9 +124,6 @@ runtime:
     base_image: "python:3.12-slim"
     setup: ["pip install non-existent-pkg-xyz-portal-test"]
     entrypoint: ["python", "agent.py"]
-  llm:
-    provider: openrouter
-    models: []
   limits:
     max_runtime_minutes: 1
     max_memory_mb: 128

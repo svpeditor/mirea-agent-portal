@@ -15,8 +15,9 @@ def load_and_validate_manifest(
     repo_dir: Path,
     agent_slug: str,
     allowed_base_images: list[str],
+    allowed_llm_models: list[str],
 ) -> Manifest:
-    """Парсит manifest.yaml + проверяет id_mismatch и base_image_whitelist."""
+    """Парсит manifest.yaml + проверяет id_mismatch, base_image_whitelist и runtime.llm."""
     manifest_path = repo_dir / "manifest.yaml"
     if not manifest_path.exists():
         raise BuildError(
@@ -47,5 +48,26 @@ def load_and_validate_manifest(
             f"base_image={manifest.runtime.docker.base_image!r} "
             f"не входит в whitelist {allowed_base_images}",
         )
+
+    if manifest.runtime.llm is not None:
+        # Провайдер уже валидируется Pydantic (Literal["openrouter"]),
+        # но защищаем на случай расширения схемы до Union.
+        if manifest.runtime.llm.provider != "openrouter":
+            raise BuildError(
+                "provider_not_supported",
+                f"runtime.llm.provider={manifest.runtime.llm.provider!r}; "
+                f"only 'openrouter' is supported on this version of portal",
+            )
+        if not manifest.runtime.llm.models:
+            raise BuildError(
+                "llm_models_empty",
+                "runtime.llm.models must be a non-empty list",
+            )
+        for model in manifest.runtime.llm.models:
+            if model not in allowed_llm_models:
+                raise BuildError(
+                    "model_not_allowed",
+                    f"model {model!r} is not in global whitelist {allowed_llm_models}",
+                )
 
     return manifest

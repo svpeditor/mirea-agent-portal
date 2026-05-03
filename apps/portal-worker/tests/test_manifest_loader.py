@@ -29,9 +29,6 @@ runtime:
     base_image: "{base_image}"
     setup: []
     entrypoint: ["python", "agent.py"]
-  llm:
-    provider: openrouter
-    models: []
   limits:
     max_runtime_minutes: 1
     max_memory_mb: 128
@@ -45,6 +42,7 @@ def test_loads_valid_manifest(tmp_path: Path) -> None:
     manifest = load_and_validate_manifest(
         repo_dir=tmp_path, agent_slug="test",
         allowed_base_images=["python:3.12-slim"],
+        allowed_llm_models=[],
     )
     assert manifest.id == "test"
     assert manifest.runtime.docker.base_image == "python:3.12-slim"
@@ -57,6 +55,7 @@ def test_no_manifest_file_raises(tmp_path: Path) -> None:
         load_and_validate_manifest(
             repo_dir=tmp_path, agent_slug="x",
             allowed_base_images=["python:3.12-slim"],
+            allowed_llm_models=[],
         )
     assert exc.value.code == "manifest_not_found"
 
@@ -69,6 +68,7 @@ def test_invalid_yaml_raises(tmp_path: Path) -> None:
         load_and_validate_manifest(
             repo_dir=tmp_path, agent_slug="x",
             allowed_base_images=["python:3.12-slim"],
+            allowed_llm_models=[],
         )
     assert exc.value.code == "manifest_invalid"
 
@@ -81,6 +81,7 @@ def test_pydantic_validation_fails(tmp_path: Path) -> None:
         load_and_validate_manifest(
             repo_dir=tmp_path, agent_slug="x",
             allowed_base_images=["python:3.12-slim"],
+            allowed_llm_models=[],
         )
     assert exc.value.code == "manifest_invalid"
 
@@ -93,6 +94,7 @@ def test_slug_mismatch_raises(tmp_path: Path) -> None:
         load_and_validate_manifest(
             repo_dir=tmp_path, agent_slug="different-id",
             allowed_base_images=["python:3.12-slim"],
+            allowed_llm_models=[],
         )
     assert exc.value.code == "manifest_invalid"
     assert "id_mismatch" in exc.value.log
@@ -106,6 +108,7 @@ def test_disallowed_base_image_raises(tmp_path: Path) -> None:
         load_and_validate_manifest(
             repo_dir=tmp_path, agent_slug="test",
             allowed_base_images=["python:3.12-slim"],
+            allowed_llm_models=[],
         )
     assert exc.value.code == "base_image_not_allowed"
 
@@ -118,6 +121,7 @@ def test_returns_pydantic_model(tmp_path: Path) -> None:
     m = load_and_validate_manifest(
         repo_dir=tmp_path, agent_slug="test",
         allowed_base_images=["python:3.12-slim"],
+        allowed_llm_models=[],
     )
     assert isinstance(m, Manifest)
 
@@ -131,5 +135,6 @@ def test_accepts_all_three_python_versions(tmp_path: Path) -> None:
         m = load_and_validate_manifest(
             repo_dir=d, agent_slug="test",
             allowed_base_images=["python:3.11-slim", "python:3.12-slim", "python:3.13-slim"],
+            allowed_llm_models=[],
         )
         assert m.runtime.docker.base_image == img

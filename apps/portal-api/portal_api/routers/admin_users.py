@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import uuid
 
+import sqlalchemy as sa
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from portal_api.deps import get_db, require_admin
-from portal_api.models import User
-from portal_api.schemas.user import ResetPasswordOut, UserAdminUpdate, UserOut
+from portal_api.models import User, UserQuota
+from portal_api.schemas.user import ResetPasswordOut, UserAdminOut, UserAdminUpdate, UserOut
 from portal_api.services import user_service
 
 router = APIRouter(
@@ -37,9 +39,19 @@ async def list_users(
     )
 
 
-@router.get("/{user_id}", response_model=UserOut)
+@router.get("/{user_id}", response_model=UserAdminOut)
 async def get_user(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)) -> User:
-    return await user_service.get_user(db, user_id)
+    stmt = (
+        sa.select(User)
+        .where(User.id == user_id)
+        .options(selectinload(User.quota))
+    )
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+    if user is None:
+        from portal_api.core.exceptions import UserNotFound
+        raise UserNotFound()
+    return user
 
 
 @router.patch("/{user_id}", response_model=UserOut)

@@ -9,7 +9,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from portal_api.core.security import hash_password
-from portal_api.models import Agent, AgentVersion, Invite, Tab, User
+from portal_api.models import Agent, AgentVersion, Invite, Job, Tab, User
 
 
 class UserFactory:
@@ -182,3 +182,43 @@ async def make_agent_version(
     session.add(version)
     await session.flush()
     return version
+
+
+async def make_user(
+    session: AsyncSession,
+    *,
+    email: str | None = None,
+    password: str = "test-pass",
+    display_name: str = "Test User",
+    role: str = "user",
+) -> User:
+    """Создать юзера с дефолтами. Все поля переопределимы."""
+    return await UserFactory.create(
+        session, email=email, password=password, display_name=display_name, role=role,
+    )
+
+
+async def make_job(
+    session: AsyncSession,
+    *,
+    agent_version_id: uuid.UUID,
+    user_id: uuid.UUID,
+    status: str = "queued",
+    params_jsonb: dict[str, Any] | None = None,
+) -> Job:
+    """Создать job с дефолтами."""
+    if params_jsonb is None:
+        params_jsonb = {}
+    now = datetime.now(UTC)
+    job = Job(
+        id=uuid.uuid4(),
+        agent_version_id=agent_version_id,
+        created_by_user_id=user_id,
+        status=status,
+        params_jsonb=params_jsonb,
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(job)
+    await session.flush()
+    return job

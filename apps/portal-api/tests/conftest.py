@@ -19,6 +19,7 @@ os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://stub:stub@stub/stub"
 # NB: не выставляем ENVIRONMENT=test через setdefault — это утекает в test_config
 # через os.environ. Settings.environment уже defaults to "dev".
 os.environ.setdefault("COOKIE_SECURE", "false")
+os.environ.setdefault("OPENROUTER_API_KEY", "sk-or-v1-test-stub")
 
 
 @pytest.fixture(scope="session")
@@ -214,6 +215,63 @@ async def user_client(client: AsyncClient, regular_user) -> AsyncClient:  # type
     )
     assert resp.status_code == 200, resp.text
     return client
+
+
+@pytest_asyncio.fixture
+async def normal_user(db: AsyncSession):  # type: ignore[no-untyped-def]
+    """Обычный юзер с UserQuota (аналог invite-flow register). Пароль 'test-pass'."""
+    from datetime import UTC, datetime
+    from decimal import Decimal
+
+    from portal_api.models import UserQuota
+    from portal_api.services.llm_quota import _floor_to_month_start_msk_utc
+    from tests.factories import UserFactory
+
+    user = await UserFactory.create(db, role="user", password="test-pass")
+    quota = UserQuota(
+        user_id=user.id,
+        monthly_limit_usd=Decimal("5.0000"),
+        period_used_usd=Decimal("0.0000"),
+        per_job_cap_usd=Decimal("0.5000"),
+        period_starts_at=_floor_to_month_start_msk_utc(datetime.now(UTC)),
+    )
+    db.add(quota)
+    await db.flush()
+    return user
+
+
+@pytest_asyncio.fixture
+async def normal_user_token(client: AsyncClient, normal_user) -> str:  # type: ignore[no-untyped-def]
+    """access_token для normal_user (JWT строка для Cookie-заголовка)."""
+    from portal_api.core.security import create_access_token
+
+    # Генерируем токен напрямую — надёжнее чем парсить cookie из httpx-ответа
+    return create_access_token(user_id=str(normal_user.id), role=normal_user.role)
+
+
+@pytest_asyncio.fixture
+async def admin_token(client: AsyncClient, admin_user) -> str:  # type: ignore[no-untyped-def]
+    """access_token для admin_user (JWT строка для Cookie-заголовка)."""
+    from portal_api.core.security import create_access_token
+
+    return create_access_token(user_id=str(admin_user.id), role=admin_user.role)
+
+
+@pytest.fixture
+def db_sessionmaker(_migrated: None) -> async_sessionmaker[AsyncSession]:
+    """async_sessionmaker, подключённый к тестовому Postgres.
+
+    Используется в тестах, которые сами создают app с dependency_overrides
+    (напр. test_llm_auth.py). Каждый вызов sessionmaker() открывает новую
+    сессию без автоматического rollback — изоляция обеспечивается тестовым
+    порядком.
+    """
+    engine = create_async_engine(os.environ["DATABASE_URL"])
+    return async_sessionmaker(
+        bind=engine,
+        expire_on_commit=False,
+        class_=AsyncSession,
+    )
 
 
 @pytest.fixture(autouse=True)

@@ -43,9 +43,6 @@ runtime:
     setup:
       - "pip install -r requirements.txt"
     entrypoint: ["python", "agent.py"]
-  llm:
-    provider: openrouter
-    models: []
   limits:
     max_runtime_minutes: 2
     max_memory_mb: 256

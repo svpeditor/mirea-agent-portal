@@ -75,8 +75,8 @@ async def create_job(
         _validate_input_filename(filename)
         inputs.append((filename, value))
 
-    # Создать job (валидирует agent + version)
-    job = await job_service.create_job(
+    # Создать job (валидирует agent + version; quota check + ephemeral token при runtime.llm)
+    job, ephemeral_plaintext = await job_service.create_job(
         db, agent_slug=slug, params=params_dict, user_id=user.id,
     )
 
@@ -110,7 +110,11 @@ async def create_job(
     await db.commit()
     await db.refresh(job)
 
-    enqueuer.enqueue_run(job.id, timeout_seconds=settings.job_timeout_seconds + 60)
+    enqueuer.enqueue_run(
+        job.id,
+        timeout_seconds=settings.job_timeout_seconds + 60,
+        ephemeral_token=ephemeral_plaintext,
+    )
 
     return {
         "job": JobCreatedOut(

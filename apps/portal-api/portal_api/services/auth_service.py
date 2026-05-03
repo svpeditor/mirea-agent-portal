@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 
 import structlog
 from sqlalchemy import select, update
@@ -23,9 +24,10 @@ from portal_api.core.security import (
     hash_refresh_token,
     verify_password,
 )
-from portal_api.models import RefreshToken, User
+from portal_api.models import RefreshToken, User, UserQuota
 from portal_api.schemas.auth import RegisterIn
 from portal_api.services.invite_service import consume_invite, find_active_invite_by_token
+from portal_api.services.llm_quota import _floor_to_month_start_msk_utc
 
 _log = structlog.get_logger(__name__)
 
@@ -73,13 +75,27 @@ async def register(
     db.add(user)
     await db.flush()
 
+    # 4b) Создаём UserQuota с дефолтными лимитами из настроек
+    settings = get_settings()
+    limit_usd = (
+        Decimal("999999.9999") if user.role == "admin"
+        else settings.llm_default_user_quota_usd
+    )
+    quota = UserQuota(
+        user_id=user.id,
+        monthly_limit_usd=limit_usd,
+        per_job_cap_usd=settings.llm_default_per_job_cap_usd,
+        period_starts_at=_floor_to_month_start_msk_utc(datetime.now(UTC)),
+    )
+    db.add(quota)
+    await db.flush()
+
     # 5) Помечаем invite использованным (атомарно — защищает от race)
     await consume_invite(db, invite, used_by=user)
 
     # 6) Создаём пару access + refresh
     access = create_access_token(user_id=str(user.id), role=user.role)
     raw, raw_hash = generate_refresh_token()
-    settings = get_settings()
     rt = RefreshToken(
         user_id=user.id,
         token_hash=raw_hash,

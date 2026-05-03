@@ -93,8 +93,8 @@ async def _setup_ws_scenario(*, set_running: bool = False):
             agent.current_version_id = v.id
             await session.commit()
 
-            job = await create_job(session, agent_slug=f"ws-{suffix}", params={},
-                                    user_id=user_id)
+            job, _eph = await create_job(session, agent_slug=f"ws-{suffix}", params={},
+                                         user_id=user_id)
             if set_running:
                 job.status = "running"
             await session.commit()

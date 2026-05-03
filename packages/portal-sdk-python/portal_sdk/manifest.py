@@ -185,7 +185,7 @@ class LimitsConfig(BaseModel):
 class RuntimeConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     docker: DockerConfig
-    llm: LLMConfig = Field(default_factory=LLMConfig)
+    llm: LLMConfig | None = None
     limits: LimitsConfig = Field(default_factory=LimitsConfig)
 
 

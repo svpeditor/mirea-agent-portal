@@ -7,7 +7,7 @@ from decimal import Decimal
 
 from sqlalchemy import CheckConstraint, DateTime, Numeric, String, func, text
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from portal_api.models.base import Base
 
@@ -36,4 +36,8 @@ class User(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    quota: Mapped["UserQuota | None"] = relationship(  # noqa: F821
+        back_populates="user", uselist=False, cascade="all, delete-orphan",
     )
