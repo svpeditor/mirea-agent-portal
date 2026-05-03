@@ -29,7 +29,7 @@ async def _enabled_agent_with_ready_version(db, admin_user, slug="echo"):
 @pytest.mark.asyncio
 async def test_create_job_happy_path(db, admin_user) -> None:
     agent, version = await _enabled_agent_with_ready_version(db, admin_user)
-    job = await job_service.create_job(
+    job, _eph = await job_service.create_job(
         db, agent_slug=agent.slug, params={"x": 1}, user_id=admin_user.id,
     )
     assert job.status == "queued"
@@ -94,7 +94,7 @@ async def test_create_job_version_not_ready_raises(db, admin_user) -> None:
 @pytest.mark.asyncio
 async def test_get_job_for_user_owner_sees(db, admin_user) -> None:
     agent, _ = await _enabled_agent_with_ready_version(db, admin_user, slug="own1")
-    job = await job_service.create_job(
+    job, _eph = await job_service.create_job(
         db, agent_slug=agent.slug, params={}, user_id=admin_user.id,
     )
     fetched = await job_service.get_job_for_user(db, job.id, admin_user)
@@ -105,7 +105,7 @@ async def test_get_job_for_user_owner_sees(db, admin_user) -> None:
 @pytest.mark.asyncio
 async def test_get_job_for_user_other_user_returns_none(db, admin_user, regular_user) -> None:
     agent, _ = await _enabled_agent_with_ready_version(db, admin_user, slug="own2")
-    job = await job_service.create_job(
+    job, _eph = await job_service.create_job(
         db, agent_slug=agent.slug, params={}, user_id=admin_user.id,
     )
     fetched = await job_service.get_job_for_user(db, job.id, regular_user)
@@ -117,7 +117,7 @@ async def test_list_for_user_pagination(db, admin_user) -> None:
     agent, _ = await _enabled_agent_with_ready_version(db, admin_user, slug="lst")
     ids = []
     for _ in range(5):
-        j = await job_service.create_job(
+        j, _eph = await job_service.create_job(
             db, agent_slug=agent.slug, params={}, user_id=admin_user.id,
         )
         ids.append(j.id)
@@ -131,7 +131,7 @@ async def test_list_for_user_pagination(db, admin_user) -> None:
 @pytest.mark.asyncio
 async def test_list_events_since_filters_by_seq(db, admin_user) -> None:
     agent, _ = await _enabled_agent_with_ready_version(db, admin_user, slug="evs")
-    job = await job_service.create_job(
+    job, _eph = await job_service.create_job(
         db, agent_slug=agent.slug, params={}, user_id=admin_user.id,
     )
     for s in (1, 2, 3, 4, 5):

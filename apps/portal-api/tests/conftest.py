@@ -217,6 +217,38 @@ async def user_client(client: AsyncClient, regular_user) -> AsyncClient:  # type
     return client
 
 
+@pytest_asyncio.fixture
+async def normal_user(db: AsyncSession):  # type: ignore[no-untyped-def]
+    """Обычный юзер с UserQuota (аналог invite-flow register). Пароль 'test-pass'."""
+    from datetime import UTC, datetime
+    from decimal import Decimal
+
+    from portal_api.models import UserQuota
+    from portal_api.services.llm_quota import _floor_to_month_start_msk_utc
+    from tests.factories import UserFactory
+
+    user = await UserFactory.create(db, role="user", password="test-pass")
+    quota = UserQuota(
+        user_id=user.id,
+        monthly_limit_usd=Decimal("5.0000"),
+        period_used_usd=Decimal("0.0000"),
+        per_job_cap_usd=Decimal("0.5000"),
+        period_starts_at=_floor_to_month_start_msk_utc(datetime.now(UTC)),
+    )
+    db.add(quota)
+    await db.flush()
+    return user
+
+
+@pytest_asyncio.fixture
+async def normal_user_token(client: AsyncClient, normal_user) -> str:  # type: ignore[no-untyped-def]
+    """access_token для normal_user (JWT строка для Cookie-заголовка)."""
+    from portal_api.core.security import create_access_token
+
+    # Генерируем токен напрямую — надёжнее чем парсить cookie из httpx-ответа
+    return create_access_token(user_id=str(normal_user.id), role=normal_user.role)
+
+
 @pytest.fixture
 def db_sessionmaker(_migrated: None) -> async_sessionmaker[AsyncSession]:
     """async_sessionmaker, подключённый к тестовому Postgres.

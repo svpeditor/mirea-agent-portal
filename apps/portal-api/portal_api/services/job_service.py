@@ -2,14 +2,15 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import and_, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from portal_api.core.exceptions import AgentNotFoundError, AgentNotReadyError
-from portal_api.models import Agent, AgentVersion, Job, User
+from portal_api.core.exceptions import AgentNotFoundError, AgentNotReadyError, QuotaExhaustedError
+from portal_api.models import Agent, AgentVersion, Job, User, UserQuota
+from portal_api.services import ephemeral_token as eph_svc
 
 
 async def create_job(
@@ -18,8 +19,11 @@ async def create_job(
     agent_slug: str,
     params: dict[str, Any],
     user_id: uuid.UUID,
-) -> Job:
-    """Создать job; raises AgentNotFoundError / AgentNotReadyError."""
+) -> tuple[Job, str | None]:
+    """Создать job; raises AgentNotFoundError / AgentNotReadyError / QuotaExhaustedError.
+
+    Returns (job, ephemeral_plaintext) — ephemeral_plaintext is None if agent has no runtime.llm.
+    """
     stmt = (
         select(Agent, AgentVersion)
         .join(AgentVersion, AgentVersion.id == Agent.current_version_id)
@@ -32,6 +36,18 @@ async def create_job(
     if version.status != "ready":
         raise AgentNotReadyError()
 
+    manifest = version.manifest_jsonb or {}
+    runtime_llm = (manifest.get("runtime") or {}).get("llm")
+    ephemeral_plaintext: str | None = None
+
+    if runtime_llm:
+        quota = await session.get(UserQuota, user_id)
+        if quota and quota.period_used_usd >= quota.monthly_limit_usd:
+            raise QuotaExhaustedError(
+                f"monthly limit ${quota.monthly_limit_usd} exceeded "
+                f"(used ${quota.period_used_usd})"
+            )
+
     job = Job(
         id=uuid.uuid4(),
         agent_version_id=version.id,
@@ -41,7 +57,21 @@ async def create_job(
     )
     session.add(job)
     await session.flush()
-    return job
+
+    if runtime_llm:
+        max_runtime = (manifest.get("runtime") or {}).get("limits", {}).get("max_runtime_minutes", 60)
+        ttl = timedelta(minutes=int(max_runtime) + 5)
+        ephemeral_plaintext, _ = eph_svc.generate()
+        await eph_svc.insert(
+            session,
+            plaintext=ephemeral_plaintext,
+            job_id=job.id,
+            user_id=user_id,
+            agent_version_id=version.id,
+            ttl=ttl,
+        )
+
+    return job, ephemeral_plaintext
 
 
 async def get_job_for_user(

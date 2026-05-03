@@ -14,9 +14,19 @@ class JobEnqueuer:
         self._redis = Redis.from_url(redis_url)
         self._queue = Queue(queue_name, connection=self._redis)
 
-    def enqueue_run(self, job_id: uuid.UUID, *, timeout_seconds: int) -> None:
+    def enqueue_run(
+        self,
+        job_id: uuid.UUID,
+        *,
+        timeout_seconds: int,
+        ephemeral_token: str | None = None,
+    ) -> None:
+        extra: dict = {}
+        if ephemeral_token is not None:
+            extra["kwargs"] = {"ephemeral_token": ephemeral_token}
         self._queue.enqueue(
             "portal_worker.tasks.run_job.run_job",
             str(job_id),
             job_timeout=timeout_seconds,
+            **extra,
         )
