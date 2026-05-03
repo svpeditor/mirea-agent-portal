@@ -127,9 +127,56 @@ def db_with_schema(settings_env: None, pg_container: PostgresContainer) -> Itera
                     UNIQUE (agent_id, git_sha)
             )
         """))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS jobs (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                agent_version_id UUID NOT NULL REFERENCES agent_versions(id) ON DELETE RESTRICT,
+                created_by_user_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+                status TEXT NOT NULL,
+                params_jsonb JSONB NOT NULL DEFAULT '{}',
+                started_at TIMESTAMPTZ,
+                finished_at TIMESTAMPTZ,
+                exit_code INTEGER,
+                error_msg TEXT,
+                error_code TEXT,
+                output_summary_jsonb JSONB,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                CONSTRAINT jobs_status_check
+                    CHECK (status IN ('queued','running','ready','failed','cancelled'))
+            )
+        """))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS job_events (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                job_id UUID NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+                seq INTEGER NOT NULL,
+                ts TIMESTAMPTZ NOT NULL DEFAULT now(),
+                event_type TEXT NOT NULL,
+                payload_jsonb JSONB NOT NULL,
+                CONSTRAINT job_events_job_id_seq_key UNIQUE (job_id, seq)
+            )
+        """))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS job_files (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                job_id UUID NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+                kind TEXT NOT NULL,
+                filename TEXT NOT NULL,
+                content_type TEXT,
+                size_bytes BIGINT NOT NULL,
+                sha256 TEXT NOT NULL,
+                storage_key TEXT NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                CONSTRAINT job_files_kind_check CHECK (kind IN ('input','output')),
+                CONSTRAINT job_files_job_kind_filename_key UNIQUE (job_id, kind, filename)
+            )
+        """))
     engine.dispose()
     yield
     eng2 = create_engine(db_url)
     with eng2.begin() as c:
-        c.execute(text("TRUNCATE agent_versions, agents, tabs, users CASCADE"))
+        c.execute(text(
+            "TRUNCATE job_files, job_events, jobs, agent_versions, agents, tabs, users CASCADE"
+        ))
     eng2.dispose()
