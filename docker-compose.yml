@@ -50,6 +50,12 @@ services:
       - ./apps/portal-api:/app
       - ./packages/portal-sdk-python:/portal-sdk-src:ro
       - portal_files:/var/portal-files
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')\" || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     depends_on:
       postgres: { condition: service_healthy }
       redis:    { condition: service_healthy }
@@ -80,6 +86,22 @@ services:
     # с явным network=portal-agents-net (см. docker_runner.py).
     networks:
       - portal-net
+
+  frontend:
+    build:
+      context: ./apps/portal-frontend
+      dockerfile: Dockerfile
+    environment:
+      API_BASE_URL: http://api:8000
+      NEXT_PUBLIC_WS_URL: ws://localhost:8000
+      NEXT_PUBLIC_APP_NAME: Портал НУГ
+      NEXT_TELEMETRY_DISABLED: "1"
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    networks: [portal-net]
+    depends_on:
+      api: { condition: service_healthy }
 
 volumes:
   postgres_data:
