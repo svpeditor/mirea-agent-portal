@@ -17,17 +17,28 @@ interface TopbarProps {
   showAdminLink?: boolean;
 }
 
+/** Sentinel: квоты выше этого порога считаем безлимитом (для админ-роли). */
+const UNLIMITED_QUOTA_THRESHOLD_USD = 1000;
+
+function computeInitials(user: UserMeOut): string {
+  if (user.display_name) {
+    const parts = user.display_name.trim().split(/\s+/);
+    return parts.map((p) => p[0] ?? '').join('').slice(0, 2).toUpperCase();
+  }
+  return (user.email[0] ?? '?').toUpperCase();
+}
+
 function formatQuota(user: UserMeOut): string {
   if (!user.quota) return '';
-  const used = parseFloat(user.quota.period_used_usd);
-  const limit = parseFloat(user.quota.monthly_limit_usd);
-  if (limit > 1000) return '∞';  // admin
+  const used = parseFloat(user.quota.period_used_usd) || 0;
+  const limit = parseFloat(user.quota.monthly_limit_usd) || 0;
+  if (limit > UNLIMITED_QUOTA_THRESHOLD_USD) return '∞';
   return `$${used.toFixed(2)} / $${limit.toFixed(2)}`;
 }
 
 export function Topbar({ user, showAdminLink }: TopbarProps) {
   const quotaStr = formatQuota(user);
-  const initials = user.email.slice(0, 2).toUpperCase();
+  const initials = computeInitials(user);
 
   return (
     <header className="border-b border-[color:var(--color-border)] bg-[color:var(--color-bg-primary)]">
