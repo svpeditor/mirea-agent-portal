@@ -49,7 +49,7 @@ services:
     volumes:
       - ./apps/portal-api:/app
       - ./packages/portal-sdk-python:/portal-sdk-src:ro
-      - portal_files:/var/portal-files
+      - /var/portal-files:/var/portal-files
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')\" || exit 1"]
       interval: 5s
@@ -78,7 +78,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./packages/portal-sdk-python:/portal-sdk:ro
-      - portal_files:/var/portal-files
+      - /var/portal-files:/var/portal-files
     depends_on:
       postgres: { condition: service_healthy }
       redis:    { condition: service_healthy }
@@ -106,7 +106,6 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  portal_files:
 
 networks:
   portal-net:

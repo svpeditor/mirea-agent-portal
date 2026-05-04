@@ -12,7 +12,7 @@ interface Props {
   initialStatus: JobStatus;
 }
 
-const TERMINAL_STATUSES: JobStatus[] = ['succeeded', 'failed', 'cancelled', 'timed_out'];
+const TERMINAL_STATUSES: JobStatus[] = ['ready', 'succeeded', 'failed', 'cancelled', 'timed_out'];
 
 export function JobStream({ jobId, initialEvents, initialStatus }: Props) {
   const router = useRouter();

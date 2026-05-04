@@ -116,7 +116,10 @@ export interface JobListItemOut {
   error_code: string | null;
 }
 
-export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled' | 'timed_out';
+// Backend использует 'ready' для успешного job (не 'succeeded'). Frontend оставлю
+// оба значения чтобы badge/streaming работали независимо от того какое из них
+// придёт; primary по контракту — 'ready'.
+export type JobStatus = 'queued' | 'running' | 'ready' | 'succeeded' | 'failed' | 'cancelled' | 'timed_out';
 
 export interface JobAgentBrief {
   slug: string;
