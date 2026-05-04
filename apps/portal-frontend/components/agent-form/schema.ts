@@ -6,8 +6,9 @@ function buildFieldSchema(field: ManifestInput): ZodTypeAny {
     case 'text':
     case 'textarea': {
       let s: z.ZodString = z.string();
-      if (field.min_length !== undefined) s = s.min(field.min_length);
-      if (field.max_length !== undefined) s = s.max(field.max_length);
+      // != null ловит и null и undefined (backend сериализует Optional как null).
+      if (field.min_length != null) s = s.min(field.min_length);
+      if (field.max_length != null) s = s.max(field.max_length);
       if (field.pattern) {
         try {
           s = s.regex(new RegExp(field.pattern));
@@ -19,8 +20,8 @@ function buildFieldSchema(field: ManifestInput): ZodTypeAny {
     }
     case 'number': {
       let s: z.ZodNumber = z.number();
-      if (field.min !== undefined) s = s.min(field.min);
-      if (field.max !== undefined) s = s.max(field.max);
+      if (field.min != null) s = s.min(field.min);
+      if (field.max != null) s = s.max(field.max);
       return field.required ? s : s.optional();
     }
     case 'checkbox':
