@@ -21,7 +21,7 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str)
         key="access_token",
         value=access_token,
         max_age=settings.jwt_access_ttl_seconds,
-        path="/api",
+        path="/",
         httponly=True,
         secure=settings.cookie_secure,
         samesite="strict",
@@ -31,7 +31,7 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str)
         key="refresh_token",
         value=refresh_token,
         max_age=settings.jwt_refresh_ttl_seconds,
-        path="/api",
+        path="/",
         httponly=True,
         secure=settings.cookie_secure,
         samesite="strict",
@@ -43,7 +43,7 @@ def _clear_auth_cookies(response: Response) -> None:
     settings = get_settings()
     response.delete_cookie(
         "access_token",
-        path="/api",
+        path="/",
         domain=settings.cookie_domain,
         samesite="strict",
         secure=settings.cookie_secure,
@@ -51,7 +51,7 @@ def _clear_auth_cookies(response: Response) -> None:
     )
     response.delete_cookie(
         "refresh_token",
-        path="/api",
+        path="/",
         domain=settings.cookie_domain,
         samesite="strict",
         secure=settings.cookie_secure,

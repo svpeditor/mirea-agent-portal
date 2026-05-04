@@ -66,6 +66,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="MIREA Agent Portal API", version="0.1.0", lifespan=lifespan)
 
+# Module-level get_settings() — environment is fixed at import time. Tests that need to
+# override settings.environment must do so via env vars before importing main.
 settings = get_settings()
 if settings.environment == "dev":
     app.add_middleware(
