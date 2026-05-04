@@ -14,7 +14,8 @@ import { toast } from 'sonner';
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get('next') ?? '/agents';
+  const rawNext = searchParams.get('next') ?? '/agents';
+  const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/agents';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -83,7 +84,7 @@ export default function LoginPage() {
           <CardTitle>Войти в портал</CardTitle>
         </CardHeader>
         <CardContent>
-          <Suspense>
+          <Suspense fallback={<div className="h-40 animate-pulse rounded-md bg-[color:var(--color-bg-tertiary)]" />}>
             <LoginForm />
           </Suspense>
         </CardContent>

@@ -53,6 +53,17 @@ export function RegisterForm({ token, email }: Props) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
+        <Label htmlFor="email">Email (из приглашения)</Label>
+        <Input
+          id="email"
+          type="email"
+          value={email}
+          readOnly
+          disabled
+          autoComplete="email"
+        />
+      </div>
+      <div>
         <Label htmlFor="display_name">Имя для портала</Label>
         <Input
           id="display_name"

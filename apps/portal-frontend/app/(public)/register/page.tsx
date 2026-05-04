@@ -28,16 +28,12 @@ export default async function RegisterPage({
       `/api/auth/invite-info?token=${encodeURIComponent(invite)}`,
     );
   } catch (err) {
-    return (
-      <ErrorCard
-        title="Приглашение недействительно"
-        description={
-          err instanceof ApiError && err.body?.error?.code === 'invite_invalid'
-            ? 'Срок действия приглашения истёк или оно уже использовано. Свяжись с админом за новым.'
-            : 'Не удалось проверить ссылку-приглашение.'
-        }
-      />
-    );
+    const code = err instanceof ApiError ? err.body?.error?.code : null;
+    const description =
+      code === 'invite_expired' || code === 'invite_invalid' || code === 'invite_used'
+        ? 'Срок действия приглашения истёк или оно уже использовано. Свяжись с админом за новым.'
+        : 'Не удалось проверить ссылку-приглашение.';
+    return <ErrorCard title="Приглашение недействительно" description={description} />;
   }
 
   return (
