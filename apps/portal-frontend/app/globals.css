@@ -32,15 +32,11 @@
   --font-serif: var(--font-source-serif), 'Newsreader', 'EB Garamond', Georgia, serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, 'JetBrains Mono', 'Geist Mono', monospace;
 
-  /* === Spacing scale (4px baseline) === */
-  --spacing-xs: 0.25rem;
-  --spacing-sm: 0.5rem;
-  --spacing-md: 1rem;
-  --spacing-lg: 1.5rem;
-  --spacing-xl: 2rem;
-  --spacing-2xl: 3rem;
-  --spacing-3xl: 4rem;
-  --spacing-4xl: 6rem;
+  /* === Spacing — оставляем дефолтную Tailwind v4 scale (--spacing: 0.25rem).
+     Не переопределяем --spacing-2xl/--spacing-md/--spacing-lg, потому что
+     Tailwind v4 из них резолвит max-w-2xl/max-w-md/max-w-lg → ломает layout
+     (max-w-2xl стал бы 3rem вместо 42rem). Числовые spacing utilities
+     p-1..p-96, gap-N, mt-N работают через дефолтный --spacing. */
 
   /* === Type scale (modular 1.25x) === */
   --text-xs: 0.75rem;
