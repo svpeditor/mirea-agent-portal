@@ -5,9 +5,6 @@ const config: NextConfig = {
   experimental: {
     typedRoutes: true,
   },
-  async rewrites() {
-    return [];
-  },
 };
 
 export default config;
