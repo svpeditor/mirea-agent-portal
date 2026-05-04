@@ -29,13 +29,30 @@ export default async function AdminUsagePage({
   ]);
 
   return (
-    <div>
-      <h1 className="mb-6 font-serif text-3xl">Использование LLM</h1>
-      <UsageDashboard
-        summary={summary}
-        agents={agents.map((a) => ({ id: a.id, slug: a.slug, name: a.name }))}
-        selectedAgentId={sp.agent_id ?? null}
-      />
+    <div className="mx-auto max-w-[1400px] px-8 py-12">
+      <div className="ed-anim-rise mb-12 grid gap-8 md:grid-cols-[2fr_1fr]">
+        <div>
+          <div className="ed-eyebrow mb-3 text-[color:var(--color-accent)]">
+            РЕДАКЦИЯ · IV.
+          </div>
+          <h1 className="ed-display text-6xl md:text-7xl">
+            Бухгалтерия<br />
+            <span className="italic">LLM.</span>
+          </h1>
+          <p className="mt-6 max-w-xl ed-meta">
+            Агрегированная статистика расходов LLM по&nbsp;всем подписчикам,
+            агентам и&nbsp;моделям. Фильтр&nbsp;— по&nbsp;конкретному агенту.
+          </p>
+        </div>
+      </div>
+
+      <div className="ed-anim-rise ed-d-2">
+        <UsageDashboard
+          summary={summary}
+          agents={agents.map((a) => ({ id: a.id, slug: a.slug, name: a.name }))}
+          selectedAgentId={sp.agent_id ?? null}
+        />
+      </div>
     </div>
   );
 }

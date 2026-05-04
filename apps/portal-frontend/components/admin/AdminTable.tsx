@@ -37,13 +37,16 @@ export function AdminTable<TData>({
   }
 
   return (
-    <div className="rounded-lg border border-[color:var(--color-border)]">
+    <div className="border-t-2 border-[color:var(--color-text-primary)]">
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((hg) => (
-            <TableRow key={hg.id}>
+            <TableRow key={hg.id} className="border-b border-[color:var(--color-rule-mute)] hover:bg-transparent">
               {hg.headers.map((h) => (
-                <TableHead key={h.id}>
+                <TableHead
+                  key={h.id}
+                  className="h-auto py-3 font-mono text-[0.65rem] uppercase tracking-[0.18em] text-[color:var(--color-text-secondary)]"
+                >
                   {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
                 </TableHead>
               ))}
@@ -55,10 +58,12 @@ export function AdminTable<TData>({
             <TableRow
               key={row.id}
               onClick={onRowClick ? () => onRowClick(row.original) : undefined}
-              className={onRowClick ? 'cursor-pointer' : ''}
+              className={`border-b border-[color:var(--color-text-primary)] transition-colors ${
+                onRowClick ? 'cursor-pointer hover:bg-[color:var(--color-bg-tertiary)]' : ''
+              }`}
             >
               {row.getVisibleCells().map((cell) => (
-                <TableCell key={cell.id}>
+                <TableCell key={cell.id} className="py-4">
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </TableCell>
               ))}

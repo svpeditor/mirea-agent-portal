@@ -46,10 +46,44 @@ export default async function AdminAgentsPage({
   const enrichedAgents = agents.map((a) => ({ ...a, tab_name: tabById.get(a.tab_id) ?? '—' }));
   const selected = drawer ? enrichedAgents.find((a) => a.id === drawer) : null;
 
+  const enabledCount = enrichedAgents.filter((a) => a.enabled).length;
+
   return (
-    <div>
-      <h1 className="mb-6 font-serif text-3xl">Агенты</h1>
-      <AgentsTable agents={enrichedAgents} />
+    <div className="mx-auto max-w-[1400px] px-8 py-12">
+      <div className="ed-anim-rise mb-12 grid gap-8 md:grid-cols-[2fr_1fr]">
+        <div>
+          <div className="ed-eyebrow mb-3 text-[color:var(--color-accent)]">
+            РЕДАКЦИЯ · II.
+          </div>
+          <h1 className="ed-display text-6xl md:text-7xl">
+            Реестр<br />
+            <span className="italic">агентов.</span>
+          </h1>
+          <p className="mt-6 max-w-xl ed-meta">
+            Полный реестр агентов: статус сборки, текущая версия, история
+            ревизий. Кликайте на&nbsp;строку чтобы&nbsp;открыть карточку.
+          </p>
+        </div>
+        <div className="flex items-end justify-end gap-6">
+          <div className="text-right">
+            <div className="font-serif text-4xl font-bold tabular-nums text-[color:var(--color-text-primary)]">
+              {enrichedAgents.length}
+            </div>
+            <div className="ed-eyebrow">всего</div>
+          </div>
+          <div className="text-right">
+            <div className="font-serif text-4xl font-bold tabular-nums text-[color:var(--color-accent)]">
+              {enabledCount}
+            </div>
+            <div className="ed-eyebrow">включено</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="ed-anim-rise ed-d-2">
+        <AgentsTable agents={enrichedAgents} />
+      </div>
+
       {selected && (
         <AgentVersionDrawer
           agentId={selected.id}
