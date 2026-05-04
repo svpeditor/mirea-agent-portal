@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from portal_api.bootstrap import bootstrap_admin, bootstrap_tabs
@@ -64,6 +65,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="MIREA Agent Portal API", version="0.1.0", lifespan=lifespan)
+
+settings = get_settings()
+if settings.environment == "dev":
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:3000"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 app.add_middleware(OriginCheckMiddleware)
 app.add_middleware(RequestLogMiddleware)  # outermost — sees status from inner middleware

@@ -10,6 +10,7 @@ from portal_api.deps import get_db
 from portal_api.schemas.auth import AuthResponse, LoginIn, RegisterIn
 from portal_api.schemas.user import UserOut
 from portal_api.services import auth_service
+from portal_api.services.invite_service import find_active_invite_by_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -56,6 +57,20 @@ def _clear_auth_cookies(response: Response) -> None:
         secure=settings.cookie_secure,
         httponly=True,
     )
+
+
+@router.get("/invite-info")
+async def invite_info(
+    token: str,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, str]:
+    """Возвращает email из invite token, если он валиден.
+
+    Используется фронтом на странице /register для предзаполнения email.
+    Кидает InviteInvalid (→ 4xx с error.code = "invite_invalid") при истёкшем/использованном/неизвестном токене.
+    """
+    invite = await find_active_invite_by_token(db, token)
+    return {"email": invite.email}
 
 
 @router.post(
