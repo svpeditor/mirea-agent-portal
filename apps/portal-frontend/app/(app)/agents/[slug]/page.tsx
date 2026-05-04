@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation';
 import { apiServer } from '@/lib/api/server';
 import { ApiError, type AgentDetailOut } from '@/lib/api/types';
-import { Markdown } from '@/components/markdown';
 import { AgentForm } from '@/components/agent-form/AgentForm';
 import { Badge } from '@/components/ui/badge';
 
@@ -27,19 +26,18 @@ export default async function AgentDetailPage({
           <div>
             <h1 className="font-serif text-4xl">{agent.name}</h1>
             <Badge variant="outline" className="mt-2">
-              {agent.manifest_jsonb.category}
+              {agent.manifest.category}
             </Badge>
           </div>
         </div>
         <p className="mb-8 text-lg text-[color:var(--color-text-secondary)]">
           {agent.short_description}
         </p>
-        {agent.about && <Markdown content={agent.about} />}
       </div>
       <aside>
         <div className="sticky top-8 rounded-lg border border-[color:var(--color-border)] bg-[color:var(--color-bg-secondary)] p-6">
           <h2 className="mb-4 font-serif text-2xl">Запустить</h2>
-          <AgentForm manifest={agent.manifest_jsonb} agentSlug={agent.slug} />
+          <AgentForm manifest={agent.manifest} agentSlug={agent.slug} />
         </div>
       </aside>
     </div>

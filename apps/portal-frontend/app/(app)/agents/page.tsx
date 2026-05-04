@@ -16,10 +16,9 @@ export default async function AgentsPage({
     apiServer<AgentPublicOut[]>('/api/agents'),
   ]);
 
-  const enabledAgents = agents.filter((a) => a.enabled);
   const filteredAgents = selectedTabSlug
-    ? enabledAgents.filter((a) => tabs.find((t) => t.slug === selectedTabSlug)?.id === a.tab_id)
-    : enabledAgents;
+    ? agents.filter((a) => a.tab.slug === selectedTabSlug)
+    : agents;
 
   return (
     <div className="grid gap-8 md:grid-cols-[200px_1fr]">

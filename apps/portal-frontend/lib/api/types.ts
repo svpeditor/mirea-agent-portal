@@ -6,6 +6,7 @@ export interface UserOut {
   email: string;
   display_name: string;
   role: 'user' | 'admin';
+  monthly_budget_usd: string;  // Decimal as string
   created_at: string;
 }
 
@@ -27,19 +28,29 @@ export interface TabOut {
   order_idx: number;
 }
 
+export interface AgentTabBrief {
+  slug: string;
+  name: string;
+}
+
+export interface AgentCurrentVersionBrief {
+  id: string;
+  manifest_version: string;
+  git_sha: string;
+}
+
 export interface AgentPublicOut {
   id: string;
   slug: string;
   name: string;
-  short_description: string;
   icon: string | null;
-  tab_id: string;
-  enabled: boolean;
+  short_description: string;
+  tab: AgentTabBrief;
+  current_version: AgentCurrentVersionBrief;
 }
 
 export interface AgentDetailOut extends AgentPublicOut {
-  about: string | null;
-  manifest_jsonb: AgentManifest;
+  manifest: AgentManifest;
 }
 
 export interface AgentManifest {
@@ -97,20 +108,36 @@ export interface ManifestRuntime {
 
 export interface JobListItemOut {
   id: string;
-  agent_slug: string;
-  agent_name: string;
   status: JobStatus;
+  agent_version_id: string;
   created_at: string;
+  started_at: string | null;
   finished_at: string | null;
-  cost_usd_total: string;
+  error_code: string | null;
 }
 
 export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled' | 'timed_out';
 
-export interface JobDetailOut extends JobListItemOut {
-  params_jsonb: Record<string, unknown>;
-  outputs: JobOutputFile[];
-  error_message: string | null;
+export interface JobAgentBrief {
+  slug: string;
+  name: string;
+}
+
+export interface JobDetailOut {
+  id: string;
+  status: JobStatus;
+  agent_version_id: string;
+  agent: JobAgentBrief;
+  params: Record<string, unknown>;
+  started_at: string | null;
+  finished_at: string | null;
+  exit_code: number | null;
+  error_code: string | null;
+  error_msg: string | null;
+  output_summary: Record<string, unknown> | null;
+  events_count: number;
+  last_event_seq: number | null;
+  created_at: string;
 }
 
 export interface JobOutputFile {

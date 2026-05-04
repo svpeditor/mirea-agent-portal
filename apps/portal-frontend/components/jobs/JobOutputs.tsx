@@ -1,3 +1,4 @@
+// TODO: requires backend endpoint GET /api/jobs/{id}/outputs to list files. Currently only download (/outputs/{file_id}) exists. Re-enable on JobDetailPage when backend adds list endpoint.
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 import type { JobOutputFile } from '@/lib/api/types';

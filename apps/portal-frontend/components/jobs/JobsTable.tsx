@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { Route } from 'next';
 import type { JobListItemOut } from '@/lib/api/types';
 import { JobStatusBadge } from './JobStatusBadge';
-import { formatRelativeTime, formatDuration, formatCurrency } from '@/lib/format';
+import { formatRelativeTime, formatDuration } from '@/lib/format';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export function JobsTable({ jobs }: { jobs: JobListItemOut[] }) {
@@ -12,23 +12,19 @@ export function JobsTable({ jobs }: { jobs: JobListItemOut[] }) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Агент</TableHead>
+            <TableHead>Задача</TableHead>
             <TableHead>Статус</TableHead>
             <TableHead>Создано</TableHead>
             <TableHead>Длительность</TableHead>
-            <TableHead className="text-right">Стоимость</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {jobs.map((job) => (
             <TableRow key={job.id} className="cursor-pointer">
               <TableCell>
-                <Link href={`/jobs/${job.id}` as Route} className="font-medium no-underline">
-                  {job.agent_name}
+                <Link href={`/jobs/${job.id}` as Route} className="font-mono text-sm no-underline">
+                  {job.id.slice(0, 8)}
                 </Link>
-                <div className="text-xs text-[color:var(--color-text-secondary)]">
-                  {job.agent_slug}
-                </div>
               </TableCell>
               <TableCell>
                 <JobStatusBadge status={job.status} />
@@ -37,10 +33,7 @@ export function JobsTable({ jobs }: { jobs: JobListItemOut[] }) {
                 {formatRelativeTime(job.created_at)}
               </TableCell>
               <TableCell className="font-mono text-sm">
-                {formatDuration(job.created_at, job.finished_at)}
-              </TableCell>
-              <TableCell className="text-right font-mono text-sm">
-                {formatCurrency(job.cost_usd_total)}
+                {formatDuration(job.started_at ?? job.created_at, job.finished_at)}
               </TableCell>
             </TableRow>
           ))}

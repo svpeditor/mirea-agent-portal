@@ -80,3 +80,11 @@ CSS-vars в `app/globals.css` (`@theme inline`), экспорт в JS через
 - `lib/api/` — client/server fetch helpers, types fallback, errors, ws helper
 - `lib/auth/` — refresh, current-user (server-only)
 - `lib/format.ts` — formatRelativeTime, formatDate, formatDuration, formatCurrency (RU locale)
+
+## Known integration gaps
+
+После Wave 5 закрытия выявлены различия между планом и реальными backend-схемами:
+
+- `GET /api/jobs` не отдаёт `agent_name/agent_slug/cost_usd_total` — таблица показывает усечённый job ID. TODO backend: enrich JobListItemOut.
+- `GET /api/jobs/{id}` не отдаёт `outputs[]` — есть только download `/outputs/{file_id}`. JobOutputs компонент скрыт. TODO backend: добавить list endpoint.
+- `lib/api/types.ts` поддерживается вручную; после поднятия backend — `npm run codegen` для авто-регенерации.
