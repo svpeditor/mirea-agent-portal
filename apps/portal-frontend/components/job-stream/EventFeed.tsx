@@ -1,25 +1,26 @@
 'use client';
 import type { JobEventOut } from '@/lib/api/types';
 import { format } from 'date-fns';
-import { CheckCircle2, AlertCircle, Info, Terminal, Sparkles } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const ICONS: Record<string, LucideIcon> = {
-  started: Sparkles,
-  item_done: CheckCircle2,
-  log: Terminal,
-  result: CheckCircle2,
-  failed: AlertCircle,
-  error: AlertCircle,
-  progress: Info,
+// Editorial event feed — like a typewriter print-out / live transcript.
+// Numbered lines, monospace timestamp prefix, glyph instead of icon component.
+
+const GLYPHS: Record<string, string> = {
+  started: '▸',
+  item_done: '✓',
+  log: '·',
+  result: '◆',
+  failed: '✕',
+  error: '✕',
+  progress: '◐',
 };
 
 const COLORS: Record<string, string> = {
   started: 'text-[color:var(--color-info)]',
-  item_done: 'text-[color:var(--color-success)]',
-  log: 'text-[color:var(--color-text-secondary)]',
-  result: 'text-[color:var(--color-success)]',
+  item_done: 'text-[color:var(--color-forest)]',
+  log: 'text-[color:var(--color-text-tertiary)]',
+  result: 'text-[color:var(--color-accent)]',
   failed: 'text-[color:var(--color-error)]',
   error: 'text-[color:var(--color-error)]',
   progress: 'text-[color:var(--color-info)]',
@@ -30,33 +31,54 @@ export function EventFeed({ events }: { events: JobEventOut[] }) {
 
   if (visible.length === 0) {
     return (
-      <div className="py-4 text-center text-sm text-[color:var(--color-text-secondary)]">
-        Ожидание событий...
+      <div className="border border-dashed border-[color:var(--color-rule-mute)] bg-[color:var(--color-bg-tertiary)] py-12 text-center">
+        <div className="ed-eyebrow mb-2 text-[color:var(--color-text-tertiary)]">
+          ОЖИДАНИЕ
+        </div>
+        <p className="font-serif text-base italic text-[color:var(--color-text-secondary)]">
+          Первое событие появится здесь, как только агент начнёт работу.
+        </p>
       </div>
     );
   }
 
   return (
-    <ul className="space-y-2">
-      {visible.map((event) => {
-        const Icon = ICONS[event.type] ?? Info;
+    <ol className="border border-[color:var(--color-text-primary)] bg-[color:var(--color-bg-tertiary)]">
+      {visible.map((event, i) => {
+        const glyph = GLYPHS[event.type] ?? '·';
         const color = COLORS[event.type] ?? '';
         return (
           <li
             key={event.seq}
-            className="flex gap-3 border-b border-[color:var(--color-border)] py-2 last:border-b-0"
+            className={cn(
+              'group flex gap-4 border-b border-[color:var(--color-rule-mute)] px-4 py-2.5 last:border-b-0',
+              'ed-anim-fade hover:bg-[color:var(--color-bg-primary)]',
+            )}
+            style={{ animationDelay: `${Math.min(i * 0.04, 0.4)}s` }}
           >
-            <Icon className={cn('mt-0.5 h-4 w-4 shrink-0', color)} />
-            <div className="flex-1">
-              <div className="text-sm">{formatEventMessage(event)}</div>
-              <div className="font-mono text-xs text-[color:var(--color-text-secondary)]">
-                {format(new Date(event.ts), 'HH:mm:ss')}
-              </div>
-            </div>
+            {/* Sequence number */}
+            <span className="w-10 shrink-0 font-mono text-xs tabular-nums text-[color:var(--color-text-tertiary)]">
+              {String(event.seq).padStart(3, '0')}
+            </span>
+
+            {/* Glyph */}
+            <span className={cn('w-3 shrink-0 font-mono text-base leading-none', color)}>
+              {glyph}
+            </span>
+
+            {/* Time */}
+            <span className="w-20 shrink-0 font-mono text-xs tabular-nums text-[color:var(--color-text-secondary)]">
+              {format(new Date(event.ts), 'HH:mm:ss')}
+            </span>
+
+            {/* Message */}
+            <span className="flex-1 font-mono text-sm text-[color:var(--color-text-primary)]">
+              {formatEventMessage(event)}
+            </span>
           </li>
         );
       })}
-    </ul>
+    </ol>
   );
 }
 
@@ -64,17 +86,17 @@ function formatEventMessage(event: JobEventOut): string {
   const p = event.payload as Record<string, unknown>;
   switch (event.type) {
     case 'started':
-      return 'Агент запущен';
+      return 'агент запущен';
     case 'item_done':
-      return typeof p.summary === 'string' ? `Готово: ${p.summary}` : `Готово (${p.item_id ?? ''})`;
+      return typeof p.summary === 'string' ? `готово · ${p.summary}` : `готово · ${p.item_id ?? ''}`;
     case 'log':
       return typeof p.message === 'string' ? p.message : JSON.stringify(p);
     case 'result':
-      return 'Задача завершена успешно';
+      return 'задача завершена успешно';
     case 'failed':
-      return typeof p.message === 'string' ? `Ошибка: ${p.message}` : 'Задача провалилась';
+      return typeof p.message === 'string' ? `сбой · ${p.message}` : 'задача провалилась';
     case 'error':
-      return typeof p.message === 'string' ? p.message : 'Произошла ошибка';
+      return typeof p.message === 'string' ? p.message : 'произошла ошибка';
     default:
       return event.type;
   }

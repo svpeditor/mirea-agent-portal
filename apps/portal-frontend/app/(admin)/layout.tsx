@@ -10,12 +10,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="min-h-screen">
       <Topbar user={user} showAdminLink />
-      <main className="mx-auto max-w-7xl px-6 py-8">
-        <div className="mb-6 text-sm text-[color:var(--color-text-secondary)]">
-          Админка
+      {/* Admin breadcrumb / masthead */}
+      <div className="border-b border-[color:var(--color-rule-mute)] bg-[color:var(--color-bg-secondary)]">
+        <div className="mx-auto max-w-[1400px] px-8 py-3">
+          <div className="ed-eyebrow text-[color:var(--color-accent)]">
+            <span className="text-[color:var(--color-accent)]">§</span> РЕДАКЦИЯ ИЗВЕСТИЙ — служебная зона
+          </div>
         </div>
-        {children}
-      </main>
+      </div>
+      <main>{children}</main>
     </div>
   );
 }

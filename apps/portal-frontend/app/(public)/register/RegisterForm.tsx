@@ -2,12 +2,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Route } from 'next';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { apiClient } from '@/lib/api/client';
 import { mapApiError } from '@/lib/api/errors';
 import { toast } from 'sonner';
+import { ArrowRight } from 'lucide-react';
 
 interface Props {
   token: string;
@@ -51,34 +49,44 @@ export function RegisterForm({ token, email }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-7">
       <div>
-        <Label htmlFor="email">Email (из приглашения)</Label>
-        <Input
+        <label htmlFor="email" className="ed-eyebrow mb-2 block">
+          Email (из приглашения)
+        </label>
+        <input
           id="email"
           type="email"
           value={email}
           readOnly
           disabled
           autoComplete="email"
+          className="ed-input cursor-not-allowed font-mono text-[color:var(--color-text-secondary)]"
         />
       </div>
+
       <div>
-        <Label htmlFor="display_name">Имя для портала</Label>
-        <Input
+        <label htmlFor="display_name" className="ed-eyebrow mb-2 block">
+          Имя для портала
+        </label>
+        <input
           id="display_name"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
           placeholder={email.split('@')[0]}
           disabled={submitting}
+          className="ed-input"
         />
-        <p className="mt-1 text-xs text-[color:var(--color-text-secondary)]">
-          Можно оставить пустым - возьмём из email.
+        <p className="ed-meta mt-1.5">
+          Можно оставить пустым&nbsp;— возьмём из email.
         </p>
       </div>
+
       <div>
-        <Label htmlFor="password">Пароль (от 12 символов)</Label>
-        <Input
+        <label htmlFor="password" className="ed-eyebrow mb-2 block">
+          Пароль <span className="text-[color:var(--color-text-tertiary)]">(от&nbsp;12 символов)</span>
+        </label>
+        <input
           id="password"
           type="password"
           value={password}
@@ -86,11 +94,15 @@ export function RegisterForm({ token, email }: Props) {
           required
           autoComplete="new-password"
           disabled={submitting}
+          className="ed-input"
         />
       </div>
+
       <div>
-        <Label htmlFor="confirm">Повтори пароль</Label>
-        <Input
+        <label htmlFor="confirm" className="ed-eyebrow mb-2 block">
+          Повторите пароль
+        </label>
+        <input
           id="confirm"
           type="password"
           value={confirm}
@@ -98,11 +110,22 @@ export function RegisterForm({ token, email }: Props) {
           required
           autoComplete="new-password"
           disabled={submitting}
+          className="ed-input"
         />
       </div>
-      <Button type="submit" className="w-full" disabled={submitting}>
-        {submitting ? 'Регистрация...' : 'Создать аккаунт'}
-      </Button>
+
+      <button
+        type="submit"
+        disabled={submitting}
+        className="ed-stamp group mt-4 w-full justify-center disabled:opacity-50"
+      >
+        {submitting ? 'Регистрация…' : (
+          <>
+            Создать учётную запись
+            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" strokeWidth={2.5} />
+          </>
+        )}
+      </button>
     </form>
   );
 }

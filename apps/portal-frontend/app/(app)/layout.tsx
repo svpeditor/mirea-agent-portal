@@ -11,7 +11,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen">
       <Topbar user={user} showAdminLink={user.role === 'admin'} />
-      <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>
+      {/* No inner max-w/padding here — каждая страница сама задаёт layout
+          под editorial-разворот (max-w-[1400px] px-8 py-X). */}
+      <main>{children}</main>
     </div>
   );
 }
