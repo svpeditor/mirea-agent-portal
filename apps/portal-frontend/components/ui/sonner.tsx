@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import { CircleCheck, Info, LoaderCircle, OctagonX, TriangleAlert } from 'lucide-react';
 import { Toaster as Sonner } from 'sonner';
 

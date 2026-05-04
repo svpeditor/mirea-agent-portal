@@ -14,6 +14,7 @@ const Progress = React.forwardRef<
       'relative h-4 w-full overflow-hidden rounded-full bg-[color:var(--color-bg-secondary)]',
       className,
     )}
+    value={value}
     {...props}
   >
     <ProgressPrimitive.Indicator
