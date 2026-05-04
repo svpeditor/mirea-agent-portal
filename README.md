@@ -69,3 +69,17 @@ agents/proverka/          # перенесённый proverka под новый 
 | 3. Поиск статей | Новый агент: arXiv + Semantic Scholar + Crossref | Агенты |
 | 4. Конструктор | Полноценный визуальный конструктор агентов через UI | Портал |
 | 5. SDK + доки | SDK на других языках, документация для писателей агентов | Портал (parallel) |
+
+## Frontend (Next.js)
+
+Frontend живёт в `apps/portal-frontend/`. Запуск:
+
+```bash
+docker compose up -d frontend
+# или для dev:
+cd apps/portal-frontend && npm run dev
+```
+
+Открывается на http://localhost:3000. Бэкенд должен быть на :8000 (`docker compose up api`).
+
+См. `apps/portal-frontend/README.md` для подробностей.
