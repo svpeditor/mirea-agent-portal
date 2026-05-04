@@ -14,13 +14,14 @@ export async function apiServer<T>(path: string, init?: RequestInit): Promise<T>
   const cookieHeader = cookieStore.toString();
 
   const res = await fetch(`${API_BASE}${path}`, {
+    cache: 'no-store',
     ...init,
     headers: {
       ...init?.headers,
       Cookie: cookieHeader,
+      // Forced JSON — apiServer не поддерживает FormData. Для multipart upload в Server Actions используй raw fetch.
       'Content-Type': 'application/json',
     },
-    cache: 'no-store',
   });
 
   if (!res.ok) {
