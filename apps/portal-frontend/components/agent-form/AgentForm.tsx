@@ -6,8 +6,12 @@ import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import type { Route } from 'next';
 import { toast } from 'sonner';
-import type { AgentManifest, JobDetailOut } from '@/lib/api/types';
+import type { AgentManifest } from '@/lib/api/types';
 import { ApiError, type ApiErrorBody } from '@/lib/api/types';
+
+interface JobCreatedResponse {
+  job: { id: string; status: string; agent_slug: string };
+}
 import { buildZodSchema } from './schema';
 import { TextField } from './fields/TextField';
 import { TextareaField } from './fields/TextareaField';
@@ -76,10 +80,10 @@ export function AgentForm({ manifest, agentSlug }: Props) {
         }
         throw new ApiError(res.status, body as ApiErrorBody | null);
       }
-      return (await res.json()) as JobDetailOut;
+      return (await res.json()) as JobCreatedResponse;
     },
-    onSuccess: (job) => {
-      router.push(`/jobs/${job.id}` as Route);
+    onSuccess: (data) => {
+      router.push(`/jobs/${data.job.id}` as Route);
     },
     onError: (err) => {
       toast.error(mapApiError(err));
