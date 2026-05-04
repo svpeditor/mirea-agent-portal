@@ -1,23 +1,36 @@
 @import 'tailwindcss';
 
 @theme inline {
-  /* === Colors (placeholder, финал — design-consultation) === */
-  --color-bg-primary: #faf7f2;
-  --color-bg-secondary: #edeae2;
-  --color-text-primary: #2b2b2b;
-  --color-text-secondary: #6b6560;
-  --color-accent: #8b2e1f;
-  --color-accent-hover: #6f2418;
-  --color-success: #5c7c40;
-  --color-warning: #c77b3f;
-  --color-error: #8b2e1f;
-  --color-info: #4a5568;
-  --color-border: #d9d4cc;
+  /* === Colours — Anthropic-школа + university editorial === */
+  /* Backgrounds */
+  --color-bg-primary: #faf7f2;        /* warm paper */
+  --color-bg-secondary: #efeae0;      /* card / aside */
+  --color-bg-tertiary: #e3ddd1;       /* hover state / inline code */
 
-  /* === Fonts (placeholder, финал — design-consultation) === */
-  --font-sans: ui-sans-serif, system-ui, sans-serif;
-  --font-serif: 'Newsreader', 'EB Garamond', Georgia, serif;
-  --font-mono: ui-monospace, 'JetBrains Mono', 'Geist Mono', monospace;
+  /* Text */
+  --color-text-primary: #1c1815;      /* near-black, тёплый */
+  --color-text-secondary: #6b6258;    /* sepia mid */
+  --color-text-tertiary: #9a9082;     /* placeholder / help */
+
+  /* Brand accent — rust, distinct from pure red */
+  --color-accent: #c14a2c;            /* primary action, brand */
+  --color-accent-hover: #a13d22;      /* deeper rust */
+  --color-accent-soft: #f5e8e0;       /* tint для hover backgrounds, soft links */
+
+  /* Semantic */
+  --color-success: #4a6b34;           /* moss green */
+  --color-warning: #c8881c;           /* amber gold */
+  --color-error: #b22222;             /* firebrick — distinct from rust accent */
+  --color-info: #2c5282;              /* deep navy */
+
+  /* Borders */
+  --color-border: #d6cdbf;            /* warm taupe */
+  --color-border-strong: #b8ad9d;     /* для emphasized state */
+
+  /* === Fonts (загружаются через next/font в layout.tsx, см. ниже) === */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-source-serif), 'Newsreader', 'EB Garamond', Georgia, serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, 'JetBrains Mono', 'Geist Mono', monospace;
 
   /* === Spacing scale (4px baseline) === */
   --spacing-xs: 0.25rem;
