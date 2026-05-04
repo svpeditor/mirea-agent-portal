@@ -28,6 +28,7 @@ export function FileUpload({ name, fileSpec, onFilesChange }: Props) {
       const maxBytes = fileSpec.max_total_size_mb * 1024 * 1024;
       if (totalBytes > maxBytes) {
         toast.error(`Превышен размер: ${fileSpec.max_total_size_mb} MB`);
+        if (inputRef.current) inputRef.current.value = '';
         return;
       }
     }

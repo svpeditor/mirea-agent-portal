@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import type { Route } from 'next';
 import { toast } from 'sonner';
 import type { AgentManifest, JobDetailOut } from '@/lib/api/types';
-import { ApiError } from '@/lib/api/types';
+import { ApiError, type ApiErrorBody } from '@/lib/api/types';
 import { buildZodSchema } from './schema';
 import { TextField } from './fields/TextField';
 import { TextareaField } from './fields/TextareaField';
@@ -74,7 +74,7 @@ export function AgentForm({ manifest, agentSlug }: Props) {
         } catch {
           /* ignore parse error */
         }
-        throw new ApiError(res.status, body as never);
+        throw new ApiError(res.status, body as ApiErrorBody | null);
       }
       return (await res.json()) as JobDetailOut;
     },
@@ -93,7 +93,10 @@ export function AgentForm({ manifest, agentSlug }: Props) {
         return;
       }
     }
-    mutation.mutate({ params, files: filesByKey });
+    const cleanParams = Object.fromEntries(
+      Object.entries(params).filter(([, v]) => v !== '' && v !== undefined),
+    );
+    mutation.mutate({ params: cleanParams, files: filesByKey });
   };
 
   return (

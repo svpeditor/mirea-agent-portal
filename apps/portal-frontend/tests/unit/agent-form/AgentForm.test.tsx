@@ -4,10 +4,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AgentForm } from '@/components/agent-form/AgentForm';
 import type { AgentManifest } from '@/lib/api/types';
 
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn() }),
-}));
-
 function baseManifest(extra: Partial<AgentManifest> = {}): AgentManifest {
   return {
     id: 't',

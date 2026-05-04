@@ -17,13 +17,20 @@ export function RadioField<T extends FieldValues>({ name, control, field }: Prop
       name={name}
       control={control}
       defaultValue={(field.default ?? '') as T[Path<T>]}
-      render={({ field: rhf, fieldState }) => (
+      render={({ field: rhf, fieldState }) => {
+        const groupLabelId = `${name}-label`;
+        return (
         <div>
-          <Label>
+          <Label id={groupLabelId}>
             {field.label}
             {field.required && <span className="text-[color:var(--color-error)]"> *</span>}
           </Label>
-          <RadioGroup value={(rhf.value ?? '') as string} onValueChange={rhf.onChange} className="mt-2 space-y-2">
+          <RadioGroup
+            aria-labelledby={groupLabelId}
+            value={(rhf.value ?? '') as string}
+            onValueChange={rhf.onChange}
+            className="mt-2 space-y-2"
+          >
             {field.options?.map((opt) => (
               <div key={opt.value} className="flex items-center gap-2">
                 <RadioGroupItem id={`${name}-${opt.value}`} value={opt.value} />
@@ -38,7 +45,8 @@ export function RadioField<T extends FieldValues>({ name, control, field }: Prop
             <p className="mt-1 text-xs text-[color:var(--color-error)]">{fieldState.error.message}</p>
           )}
         </div>
-      )}
+        );
+      }}
     />
   );
 }

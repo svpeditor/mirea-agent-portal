@@ -6,9 +6,15 @@ function buildFieldSchema(field: ManifestInput): ZodTypeAny {
     case 'text':
     case 'textarea': {
       let s: z.ZodString = z.string();
-      if (field.min_length) s = s.min(field.min_length);
-      if (field.max_length) s = s.max(field.max_length);
-      if (field.pattern) s = s.regex(new RegExp(field.pattern));
+      if (field.min_length !== undefined) s = s.min(field.min_length);
+      if (field.max_length !== undefined) s = s.max(field.max_length);
+      if (field.pattern) {
+        try {
+          s = s.regex(new RegExp(field.pattern));
+        } catch {
+          // Invalid regex in manifest — пропускаем constraint, валидация на backend.
+        }
+      }
       return field.required ? s.min(1, 'Обязательное поле') : s.optional().or(z.literal(''));
     }
     case 'number': {
@@ -23,11 +29,11 @@ function buildFieldSchema(field: ManifestInput): ZodTypeAny {
     case 'radio': {
       const values = field.options?.map((o) => o.value) ?? [];
       const s = values.length > 0 ? z.enum(values as [string, ...string[]]) : z.string();
-      return field.required ? s : s.optional();
+      return field.required ? s : s.optional().or(z.literal(''));
     }
     case 'date': {
       const s = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD');
-      return field.required ? s : s.optional();
+      return field.required ? s : s.optional().or(z.literal(''));
     }
     default:
       return z.unknown();
