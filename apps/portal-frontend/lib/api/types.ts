@@ -1,0 +1,168 @@
+// Auto-gen из openapi.json. До регенерации — минимальный набор.
+// Запусти `npm run codegen` после первого запуска backend.
+
+export interface UserOut {
+  id: string;
+  email: string;
+  display_name: string;
+  role: 'user' | 'admin';
+  created_at: string;
+}
+
+export interface UserMeOut extends UserOut {
+  quota: UserQuotaOut | null;
+}
+
+export interface UserQuotaOut {
+  monthly_limit_usd: string;  // Decimal as string в JSON
+  period_used_usd: string;
+  period_starts_at: string;
+  per_job_cap_usd: string;
+}
+
+export interface TabOut {
+  id: string;
+  slug: string;
+  name: string;
+  order_idx: number;
+}
+
+export interface AgentPublicOut {
+  id: string;
+  slug: string;
+  name: string;
+  short_description: string;
+  icon: string | null;
+  tab_id: string;
+  enabled: boolean;
+}
+
+export interface AgentDetailOut extends AgentPublicOut {
+  about: string | null;
+  manifest_jsonb: AgentManifest;
+}
+
+export interface AgentManifest {
+  id: string;
+  name: string;
+  version: string;
+  category: string;
+  short_description: string;
+  about?: string;
+  inputs?: Record<string, ManifestInput>;
+  files?: Record<string, ManifestFile>;
+  outputs: ManifestOutput[];
+  runtime: ManifestRuntime;
+}
+
+export interface ManifestInput {
+  type: 'text' | 'textarea' | 'number' | 'checkbox' | 'select' | 'radio' | 'date';
+  label: string;
+  help?: string;
+  required?: boolean;
+  default?: string | number | boolean;
+  placeholder?: string;
+  min?: number;
+  max?: number;
+  step?: number;
+  options?: Array<{ value: string; label: string }>;
+  pattern?: string;
+  min_length?: number;
+  max_length?: number;
+  rows?: number;
+}
+
+export interface ManifestFile {
+  type: 'single_file' | 'multi_files' | 'folder' | 'zip';
+  label: string;
+  help?: string;
+  required?: boolean;
+  accept?: string[];
+  max_total_size_mb?: number;
+}
+
+export interface ManifestOutput {
+  id: string;
+  type: 'docx' | 'pdf' | 'xlsx' | 'zip' | 'html' | 'json' | 'any';
+  label: string;
+  filename: string;
+  primary?: boolean;
+}
+
+export interface ManifestRuntime {
+  docker: { base_image: string; setup?: string[]; entrypoint: string[] };
+  llm?: { provider: 'openrouter'; models: string[] };
+  limits: { max_runtime_minutes: number; max_memory_mb: number; max_cpu_cores: number };
+}
+
+export interface JobListItemOut {
+  id: string;
+  agent_slug: string;
+  agent_name: string;
+  status: JobStatus;
+  created_at: string;
+  finished_at: string | null;
+  cost_usd_total: string;
+}
+
+export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled' | 'timed_out';
+
+export interface JobDetailOut extends JobListItemOut {
+  params_jsonb: Record<string, unknown>;
+  outputs: JobOutputFile[];
+  error_message: string | null;
+}
+
+export interface JobOutputFile {
+  id: string;
+  filename: string;
+  size_bytes: number;
+  content_type: string;
+}
+
+export interface JobEventOut {
+  seq: number;
+  ts: string;
+  type: 'started' | 'progress' | 'item_done' | 'log' | 'result' | 'failed' | 'error';
+  payload: Record<string, unknown>;
+}
+
+export interface UsageLogItem {
+  id: string;
+  job_id: string;
+  agent_slug: string | null;
+  model: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  cost_usd: string;
+  status: string;
+  created_at: string;
+}
+
+export interface UsagePage {
+  items: UsageLogItem[];
+  next_cursor: string | null;
+}
+
+export interface AdminUsageSummary {
+  total_cost_usd: string;
+  total_requests: number;
+  by_user: Array<{ user_id: string; email: string; cost_usd: string; requests: number }>;
+  by_agent: Array<{ agent_id: string; slug: string; cost_usd: string; requests: number }>;
+  by_model: Array<{ model: string; cost_usd: string; requests: number }>;
+}
+
+// Errors
+export interface ApiErrorBody {
+  error: { code: string; message: string };
+}
+
+export class ApiError extends Error {
+  constructor(
+    public status: number,
+    public body: ApiErrorBody | null,
+  ) {
+    super(body?.error?.message ?? `HTTP ${status}`);
+    this.name = 'ApiError';
+  }
+}
