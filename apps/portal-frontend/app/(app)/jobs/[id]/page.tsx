@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { apiServer } from '@/lib/api/server';
 import { ApiError, type JobDetailOut, type JobEventOut } from '@/lib/api/types';
 import { JobStream } from '@/components/job-stream/JobStream';
+import { CancelJobButton } from '@/components/jobs/CancelJobButton';
 import { JobMeta } from '@/components/jobs/JobMeta';
 import { JobStatusBadge } from '@/components/jobs/JobStatusBadge';
 import { ArrowLeft } from 'lucide-react';
@@ -83,6 +84,7 @@ export default async function JobDetailPage({
       {/* Two columns */}
       <div className="grid gap-x-12 gap-y-8 lg:grid-cols-[1fr_360px]">
         <div className="ed-anim-rise ed-d-3">
+          <CancelJobButton jobId={job.id} status={job.status} />
           <JobStream jobId={job.id} initialEvents={initialEvents} initialStatus={job.status} />
         </div>
         <aside className="ed-anim-rise ed-d-4">
