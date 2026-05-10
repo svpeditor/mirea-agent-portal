@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sdk:
+    name: SDK — pytest + ruff
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        working-directory: packages/portal-sdk-python
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install -e ".[dev]"
+      - name: ruff
+        working-directory: packages/portal-sdk-python
+        run: .venv/bin/ruff check portal_sdk tests scripts
+      - name: pytest
+        working-directory: packages/portal-sdk-python
+        run: .venv/bin/pytest
+
+  api:
+    name: API — pytest + ruff
+    runs-on: ubuntu-24.04
+    services:
+      docker:
+        image: docker:dind
+        options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install SDK editable
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install -e packages/portal-sdk-python
+          .venv/bin/pip install -e "apps/portal-api[dev]"
+      - name: ruff portal_api
+        run: .venv/bin/ruff check apps/portal-api/portal_api
+      - name: pytest portal-api
+        working-directory: apps/portal-api
+        run: ../../.venv/bin/pytest -m "not openrouter_live"
+
+  worker:
+    name: Worker — pytest + ruff
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install -e packages/portal-sdk-python
+          .venv/bin/pip install -e "apps/portal-worker[dev]"
+      - name: ruff portal_worker
+        run: .venv/bin/ruff check apps/portal-worker/portal_worker
+      - name: pytest portal-worker
+        working-directory: apps/portal-worker
+        run: ../../.venv/bin/pytest
+
+  agents:
+    name: Stub-агенты — manifest validation
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install SDK
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install -e packages/portal-sdk-python pytest
+      - name: pytest agents/
+        run: |
+          .venv/bin/pytest agents/proverka_stub/tests agents/science_agent_stub/tests
