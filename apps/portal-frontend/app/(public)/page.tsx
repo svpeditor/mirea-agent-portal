@@ -183,18 +183,18 @@ export default async function LandingPage() {
             <Link
               key={article.slug}
               href={`/agents/${article.slug}` as Route}
-              className="group ed-anim-rise grid grid-cols-[80px_1fr_240px] items-start gap-6 border-b border-[color:var(--color-text-primary)] py-10 no-underline transition-colors hover:bg-[color:var(--color-bg-tertiary)] md:gap-12"
+              className="group ed-anim-rise grid grid-cols-1 items-start gap-4 border-b border-[color:var(--color-text-primary)] py-10 no-underline transition-colors hover:bg-[color:var(--color-bg-tertiary)] md:grid-cols-[140px_1fr_240px] md:gap-12"
               style={{ animationDelay: `${0.15 + i * 0.08}s` }}
             >
               {/* Number column */}
-              <div className="pt-2 text-right">
-                <div className="font-serif text-4xl font-bold leading-none text-[color:var(--color-text-primary)]">
+              <div className="pt-1 md:text-right">
+                <div className="font-serif text-3xl font-bold leading-none tabular-nums text-[color:var(--color-text-primary)] md:text-4xl">
                   №&nbsp;{article.no}
                 </div>
               </div>
 
               {/* Main column */}
-              <div>
+              <div className="min-w-0">
                 <div className="ed-eyebrow mb-3">{article.category}</div>
                 <h3 className="ed-display text-3xl md:text-4xl">
                   {article.name}
