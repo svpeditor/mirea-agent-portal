@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from portal_api.deps import get_build_enqueuer, get_db, require_admin
@@ -16,6 +16,8 @@ from portal_api.schemas.agent_version import (
     NewVersionIn,
 )
 from portal_api.services import agent_version_service as svc
+from portal_api.services import audit_service
+from portal_api.services.audit_service import A as Action
 from portal_api.services.build_enqueue import BuildEnqueuer
 
 router = APIRouter(tags=["admin-agent-versions"], dependencies=[Depends(require_admin)])
@@ -60,12 +62,24 @@ async def get_version_endpoint(
 async def new_version(
     agent_id: uuid.UUID,
     payload: NewVersionIn,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     enqueuer: BuildEnqueuer = Depends(get_build_enqueuer),
     admin: User = Depends(require_admin),
 ) -> AgentVersionDetailOut:
     v = await svc.create_new_version(
         db, agent_id, git_ref=payload.git_ref, created_by_user_id=admin.id
+    )
+    ip, ua = audit_service.request_meta(request)
+    await audit_service.log_action(
+        db,
+        actor_user_id=admin.id,
+        action=Action.AGENT_VERSION_CREATE,
+        resource_type="agent_version",
+        resource_id=str(v.id),
+        payload={"agent_id": str(agent_id), "git_ref": payload.git_ref},
+        ip=ip,
+        user_agent=ua,
     )
     await db.commit()
     await db.refresh(v)
@@ -81,9 +95,22 @@ async def new_version(
 )
 async def set_current_endpoint(
     version_id: uuid.UUID,
+    request: Request,
     db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
 ) -> AgentAdminOut:
     agent = await svc.set_current(db, version_id)
+    ip, ua = audit_service.request_meta(request)
+    await audit_service.log_action(
+        db,
+        actor_user_id=admin.id,
+        action=Action.AGENT_VERSION_SET_CURRENT,
+        resource_type="agent_version",
+        resource_id=str(version_id),
+        payload={"agent_id": str(agent.id)},
+        ip=ip,
+        user_agent=ua,
+    )
     await db.commit()
     await db.refresh(agent)
     return AgentAdminOut.model_validate(agent)
@@ -113,9 +140,21 @@ async def retry_endpoint(
 )
 async def delete_version_endpoint(
     version_id: uuid.UUID,
+    request: Request,
     db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
 ) -> Response:
     image_tag = await svc.delete_version(db, version_id)
+    ip, ua = audit_service.request_meta(request)
+    await audit_service.log_action(
+        db,
+        actor_user_id=admin.id,
+        action=Action.AGENT_VERSION_DELETE,
+        resource_type="agent_version",
+        resource_id=str(version_id),
+        ip=ip,
+        user_agent=ua,
+    )
     await db.commit()
     if image_tag:
         # Best-effort cleanup; ошибки в логи, не в response.

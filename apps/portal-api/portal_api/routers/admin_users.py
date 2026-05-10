@@ -5,15 +5,16 @@ from __future__ import annotations
 import uuid
 
 import sqlalchemy as sa
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from portal_api.deps import get_db, require_admin
-from portal_api.models import User, UserQuota
+from portal_api.models import User
 from portal_api.schemas.user import ResetPasswordOut, UserAdminOut, UserAdminUpdate, UserOut
-from portal_api.services import user_service
+from portal_api.services import audit_service, user_service
+from portal_api.services.audit_service import A as Action
 
 router = APIRouter(
     prefix="/admin/users", tags=["admin"], dependencies=[Depends(require_admin)]
@@ -58,29 +59,68 @@ async def get_user(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)) -> Us
 async def patch_user(
     user_id: uuid.UUID,
     payload: UserAdminUpdate,
+    request: Request,
     db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
 ) -> User:
-    return await user_service.update_user_admin(
+    user = await user_service.update_user_admin(
         db,
         user_id,
         display_name=payload.display_name,
         role=payload.role,
         monthly_budget_usd=payload.monthly_budget_usd,
     )
+    ip, ua = audit_service.request_meta(request)
+    await audit_service.log_action(
+        db,
+        actor_user_id=admin.id,
+        action=Action.USER_UPDATE_QUOTA,
+        resource_type="user",
+        resource_id=str(user_id),
+        payload=payload.model_dump(exclude_none=True, mode="json"),
+        ip=ip,
+        user_agent=ua,
+    )
+    return user
 
 
 @router.delete("/{user_id}")
 async def delete_user(
-    user_id: uuid.UUID, db: AsyncSession = Depends(get_db)
+    user_id: uuid.UUID,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
 ) -> dict[str, str]:
     await user_service.delete_user(db, user_id)
+    ip, ua = audit_service.request_meta(request)
+    await audit_service.log_action(
+        db,
+        actor_user_id=admin.id,
+        action=Action.USER_DELETE,
+        resource_type="user",
+        resource_id=str(user_id),
+        ip=ip,
+        user_agent=ua,
+    )
     return {"status": "ok"}
 
 
 @router.post("/{user_id}/reset-password", response_model=ResetPasswordOut)
 async def reset_password(
     user_id: uuid.UUID,
+    request: Request,
     db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
 ) -> ResetPasswordOut:
     new_pwd = await user_service.reset_password(db, user_id)
+    ip, ua = audit_service.request_meta(request)
+    await audit_service.log_action(
+        db,
+        actor_user_id=admin.id,
+        action=Action.USER_RESET_PASSWORD,
+        resource_type="user",
+        resource_id=str(user_id),
+        ip=ip,
+        user_agent=ua,
+    )
     return ResetPasswordOut(temporary_password=new_pwd)
