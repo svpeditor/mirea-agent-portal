@@ -2,10 +2,11 @@ import Link from 'next/link';
 import type { Route } from 'next';
 import { notFound } from 'next/navigation';
 import { apiServer } from '@/lib/api/server';
-import { ApiError, type JobDetailOut, type JobEventOut } from '@/lib/api/types';
+import { ApiError, type JobDetailOut, type JobEventOut, type JobOutputFile } from '@/lib/api/types';
 import { JobStream } from '@/components/job-stream/JobStream';
 import { CancelJobButton } from '@/components/jobs/CancelJobButton';
 import { JobMeta } from '@/components/jobs/JobMeta';
+import { JobOutputs } from '@/components/jobs/JobOutputs';
 import { JobStatusBadge } from '@/components/jobs/JobStatusBadge';
 import { ArrowLeft } from 'lucide-react';
 import { formatDate } from '@/lib/format';
@@ -26,6 +27,14 @@ export default async function JobDetailPage({
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) notFound();
     throw err;
+  }
+
+  // outputs list — backend PR #8. Если endpoint ещё нет — 404, тогда null.
+  let outputs: JobOutputFile[] | null = null;
+  try {
+    outputs = await apiServer<JobOutputFile[]>(`/api/jobs/${id}/outputs`);
+  } catch (err) {
+    if (!(err instanceof ApiError) || err.status !== 404) throw err;
   }
 
   return (
@@ -88,7 +97,10 @@ export default async function JobDetailPage({
           <JobStream jobId={job.id} initialEvents={initialEvents} initialStatus={job.status} />
         </div>
         <aside className="ed-anim-rise ed-d-4">
-          <div className="sticky top-8">
+          <div className="sticky top-8 space-y-6">
+            {outputs && outputs.length > 0 && (
+              <JobOutputs outputs={outputs} jobId={job.id} />
+            )}
             <JobMeta job={job} />
           </div>
         </aside>
