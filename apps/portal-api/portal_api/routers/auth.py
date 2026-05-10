@@ -63,6 +63,14 @@ def _clear_auth_cookies(response: Response) -> None:
         httponly=True,
     )
     response.delete_cookie(
+        "ws_token",
+        path="/",
+        domain=settings.cookie_domain,
+        samesite="lax",
+        secure=settings.cookie_secure,
+        httponly=False,
+    )
+    response.delete_cookie(
         "refresh_token",
         path="/",
         domain=settings.cookie_domain,

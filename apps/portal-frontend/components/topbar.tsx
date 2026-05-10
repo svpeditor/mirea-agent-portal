@@ -8,7 +8,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { UserMeOut } from '@/lib/api/types';
-import { LogOut, Shield, User as UserIcon } from 'lucide-react';
+import { Shield, User as UserIcon } from 'lucide-react';
+import { LogoutMenuItem } from './LogoutMenuItem';
 
 interface TopbarProps {
   user: UserMeOut;
@@ -167,20 +168,7 @@ export function Topbar({ user, showAdminLink }: TopbarProps) {
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator className="my-0 bg-[color:var(--color-rule-mute)]" />
-              <DropdownMenuItem
-                asChild
-                className="rounded-none px-3 py-2 focus:bg-[color:var(--color-bg-secondary)]"
-              >
-                <form action="/api/auth/logout" method="POST" className="w-full">
-                  <button
-                    type="submit"
-                    className="flex w-full cursor-pointer items-center text-left text-sm text-[color:var(--color-accent)]"
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Выйти
-                  </button>
-                </form>
-              </DropdownMenuItem>
+              <LogoutMenuItem />
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
