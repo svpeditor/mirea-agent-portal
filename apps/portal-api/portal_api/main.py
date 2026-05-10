@@ -30,6 +30,7 @@ from portal_api.routers import (
     jobs_ws,
     me,
     public_agents,
+    public_catalog,
     public_tabs,
 )
 from portal_api.routers.admin_quota import router as admin_quota_router
@@ -131,6 +132,7 @@ app.include_router(admin_agents.router, prefix="/api")
 app.include_router(admin_agent_versions.router, prefix="/api")
 app.include_router(public_tabs.router, prefix="/api")
 app.include_router(public_agents.router, prefix="/api")
+app.include_router(public_catalog.router, prefix="/api")
 app.include_router(jobs.router, prefix="/api")
 app.include_router(jobs_ws.router, prefix="/api")
 app.include_router(admin_quota_router)

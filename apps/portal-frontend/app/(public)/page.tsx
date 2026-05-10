@@ -1,42 +1,55 @@
 import Link from 'next/link';
 import type { Route } from 'next';
-import { ArrowUpRight, Beaker, Microscope, FileSearch, FileCheck, Send, BookOpen } from 'lucide-react';
+import { ArrowUpRight, Beaker, Microscope, Send } from 'lucide-react';
 
-const ARTICLES = [
-  {
-    no: '01',
-    category: 'Научная работа',
-    name: 'Поиск научных статей',
-    deck: 'Ищет публикации по заданной теме в arXiv, Semantic Scholar и Crossref. Возвращает curated-список с аннотациями и ранжированием по релевантности.',
-    metrics: ['arXiv API', 'OpenRouter LLM', 'DOCX'],
-    Icon: FileSearch,
-  },
-  {
-    no: '02',
-    category: 'Научная работа',
-    name: 'Эксперт конкурсных работ',
-    deck: 'Анализирует папку с конкурсными работами школьников по чек-листу научной экспертизы и формирует Word с заключениями.',
-    metrics: ['46 работ за прогон', 'Чек-лист НУГ', 'DOCX'],
-    Icon: FileCheck,
-  },
-  {
-    no: '03',
-    category: 'Учебная',
-    name: 'Проверка академического стиля',
-    deck: 'Проверяет научный текст на соответствие требованиям ВАК и академического канона. Подсвечивает разговорные обороты и возвращает правки.',
-    metrics: ['DeepSeek-R1', 'Diff-режим', 'DOCX'],
-    Icon: BookOpen,
-  },
-];
+interface PublicCatalogAgent {
+  slug: string;
+  name: string;
+  short_description: string;
+  icon: string | null;
+  category: string;
+  category_slug: string;
+}
 
-const NUMBERS = [
-  { value: '12', label: 'агентов в реестре' },
-  { value: '5—15', label: 'минут до результата' },
-  { value: '0', label: 'строк кода требуется' },
-  { value: '24/7', label: 'через любой браузер' },
-];
+interface PublicCatalogOut {
+  agents: PublicCatalogAgent[];
+  total_agents: number;
+}
 
-export default function LandingPage() {
+async function fetchCatalog(): Promise<PublicCatalogOut> {
+  const apiBase = process.env.API_BASE_URL ?? 'http://localhost:8000';
+  try {
+    const res = await fetch(`${apiBase}/api/public/catalog?limit=3`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    return (await res.json()) as PublicCatalogOut;
+  } catch {
+    // Если API лежит — landing всё равно должен открываться.
+    return { agents: [], total_agents: 0 };
+  }
+}
+
+function staticNumbers(totalAgents: number) {
+  return [
+    { value: String(totalAgents || '—'), label: 'агентов в реестре' },
+    { value: '5—15', label: 'минут до результата' },
+    { value: '0', label: 'строк кода требуется' },
+    { value: '24/7', label: 'через любой браузер' },
+  ];
+}
+
+export default async function LandingPage() {
+  const catalog = await fetchCatalog();
+  const ARTICLES = catalog.agents.map((a, i) => ({
+    no: String(i + 1).padStart(2, '0'),
+    slug: a.slug,
+    category: a.category,
+    name: a.name,
+    icon: a.icon,
+    deck: a.short_description.trim(),
+  }));
+  const NUMBERS = staticNumbers(catalog.total_agents);
   return (
     <div className="min-h-screen bg-[color:var(--color-bg-primary)]">
       {/* ─── Masthead-style top stripe ─────────────────────────────────── */}
@@ -156,10 +169,21 @@ export default function LandingPage() {
 
         {/* Articles list — like a journal TOC, not cards */}
         <div className="border-t-2 border-[color:var(--color-text-primary)]">
+          {ARTICLES.length === 0 && (
+            <div className="ed-anim-rise px-8 py-16 text-center">
+              <div className="ed-eyebrow mb-2 text-[color:var(--color-text-tertiary)]">
+                ВЫПУСК В ПЕЧАТИ
+              </div>
+              <p className="font-serif text-lg italic text-[color:var(--color-text-secondary)]">
+                Реестр готовится. Возвращайтесь позже.
+              </p>
+            </div>
+          )}
           {ARTICLES.map((article, i) => (
-            <article
-              key={article.no}
-              className="group ed-anim-rise grid grid-cols-[80px_1fr_240px] items-start gap-6 border-b border-[color:var(--color-text-primary)] py-10 transition-colors hover:bg-[color:var(--color-bg-tertiary)] md:gap-12"
+            <Link
+              key={article.slug}
+              href={`/agents/${article.slug}` as Route}
+              className="group ed-anim-rise grid grid-cols-[80px_1fr_240px] items-start gap-6 border-b border-[color:var(--color-text-primary)] py-10 no-underline transition-colors hover:bg-[color:var(--color-bg-tertiary)] md:gap-12"
               style={{ animationDelay: `${0.15 + i * 0.08}s` }}
             >
               {/* Number column */}
@@ -179,22 +203,20 @@ export default function LandingPage() {
                   {article.deck}
                 </p>
                 <div className="mt-5 flex flex-wrap gap-x-5 gap-y-1">
-                  {article.metrics.map((m) => (
-                    <span key={m} className="ed-meta">
-                      <span className="text-[color:var(--color-text-tertiary)]">·</span>{' '}
-                      {m}
-                    </span>
-                  ))}
+                  <span className="ed-meta">
+                    <span className="text-[color:var(--color-text-tertiary)]">·</span>{' '}
+                    /{article.slug}
+                  </span>
                 </div>
               </div>
 
               {/* Decorative icon column */}
               <div className="hidden items-center justify-center md:flex">
-                <div className="flex h-32 w-32 items-center justify-center border border-[color:var(--color-text-primary)] bg-[color:var(--color-bg-tertiary)] transition-all group-hover:bg-[color:var(--color-accent)] group-hover:border-[color:var(--color-accent)] group-hover:text-[color:var(--color-bg-primary)]">
-                  <article.Icon className="h-10 w-10" strokeWidth={1.25} />
+                <div className="flex h-32 w-32 items-center justify-center border border-[color:var(--color-text-primary)] bg-[color:var(--color-bg-tertiary)] text-4xl transition-all group-hover:bg-[color:var(--color-accent)] group-hover:border-[color:var(--color-accent)] group-hover:text-[color:var(--color-bg-primary)]">
+                  {article.icon ?? '§'}
                 </div>
               </div>
-            </article>
+            </Link>
           ))}
         </div>
       </section>
