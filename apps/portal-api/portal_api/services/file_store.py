@@ -51,7 +51,21 @@ class LocalDiskFileStore:
         self, key: str, data: AsyncIterable[bytes],
     ) -> tuple[int, str]:
         path = self._resolve(key)
-        path.parent.mkdir(parents=True, exist_ok=True)
+        # mkdir с permissive perms: api=root, worker=uid 1000, agent-контейнер
+        # тоже не root — все должны мочь писать. /var/portal-files mount shared.
+        parent = path.parent
+        parts_to_create = []
+        p = parent
+        while not p.exists() and p != self._root:
+            parts_to_create.append(p)
+            p = p.parent
+        parent.mkdir(parents=True, exist_ok=True)
+        # Установить mode 0o777 на новосозданные директории
+        for p in parts_to_create:
+            try:
+                p.chmod(0o777)
+            except OSError:
+                pass
         sha = hashlib.sha256()
         size = 0
         async with aiofiles.open(path, "wb") as f:

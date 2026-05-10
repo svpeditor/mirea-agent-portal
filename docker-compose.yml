@@ -73,7 +73,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PORTAL_SDK_PATH: /portal-sdk
       LLM_PROXY_BASE_URL: http://api:8000/llm/v1
-      LLM_AGENTS_NETWORK_NAME: portal-agents-net
+      LLM_AGENTS_NETWORK_NAME: agent_portal-wave0_portal-agents-net
       LLM_ALLOWED_MODELS: ${LLM_ALLOWED_MODELS}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock

@@ -117,7 +117,11 @@ def run_job(payload: dict | str) -> None:
         output_dir.mkdir(parents=True)
         if input_src.exists():
             for src in input_src.iterdir():
-                shutil.copy2(src, input_dir / src.name)
+                dst = input_dir / src.name
+                if src.is_dir():
+                    shutil.copytree(src, dst)
+                else:
+                    shutil.copy2(src, dst)
         params_path = workdir / "params.json"
         params_path.write_text(json.dumps(params))
 
