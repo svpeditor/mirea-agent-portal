@@ -1,6 +1,7 @@
 import { apiServer } from '@/lib/api/server';
 import { AgentsTable } from '@/components/admin/AgentsTable';
 import { AgentVersionDrawer } from '@/components/admin/AgentVersionDrawer';
+import { CreateAgentDialog } from '@/components/admin/CreateAgentDialog';
 
 interface AgentLatestBrief {
   id: string;
@@ -64,19 +65,22 @@ export default async function AdminAgentsPage({
             ревизий. Кликайте на&nbsp;строку чтобы&nbsp;открыть карточку.
           </p>
         </div>
-        <div className="flex items-end justify-end gap-6">
-          <div className="text-right">
-            <div className="font-serif text-4xl font-bold tabular-nums text-[color:var(--color-text-primary)]">
-              {enrichedAgents.length}
+        <div className="flex flex-col items-end justify-end gap-6">
+          <div className="flex items-end gap-6">
+            <div className="text-right">
+              <div className="font-serif text-4xl font-bold tabular-nums text-[color:var(--color-text-primary)]">
+                {enrichedAgents.length}
+              </div>
+              <div className="ed-eyebrow">всего</div>
             </div>
-            <div className="ed-eyebrow">всего</div>
-          </div>
-          <div className="text-right">
-            <div className="font-serif text-4xl font-bold tabular-nums text-[color:var(--color-accent)]">
-              {enabledCount}
+            <div className="text-right">
+              <div className="font-serif text-4xl font-bold tabular-nums text-[color:var(--color-accent)]">
+                {enabledCount}
+              </div>
+              <div className="ed-eyebrow">включено</div>
             </div>
-            <div className="ed-eyebrow">включено</div>
           </div>
+          <CreateAgentDialog />
         </div>
       </div>
 
