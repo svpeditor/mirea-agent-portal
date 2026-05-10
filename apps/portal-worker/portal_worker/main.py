@@ -6,6 +6,7 @@ from rq import Worker
 
 from portal_worker.config import get_settings
 from portal_worker.core.logging import configure_logging
+from portal_worker.core.sentry import init_sentry
 from portal_worker.tasks.build_agent import recover_orphaned_builds
 from portal_worker.tasks.run_job import recover_orphaned_jobs
 
@@ -13,6 +14,7 @@ from portal_worker.tasks.run_job import recover_orphaned_jobs
 def main() -> None:
     settings = get_settings()
     configure_logging(settings.log_level)
+    init_sentry(settings)
 
     recover_orphaned_builds()
     recover_orphaned_jobs()

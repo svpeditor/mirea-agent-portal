@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     environment: str = "dev"
 
+    # Sentry (опционально, без DSN не активируется)
+    sentry_dsn: str | None = None
+    sentry_traces_sample_rate: float = 0.0  # 0 = только ошибки, без performance
+    sentry_release: str | None = None
+
     # Redis (RQ broker для билд-очереди)
     redis_url: RedisDsn = "redis://redis:6379/0"  # type: ignore[assignment]
 

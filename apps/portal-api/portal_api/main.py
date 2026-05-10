@@ -16,6 +16,7 @@ from portal_api.core.exceptions import AppError
 from portal_api.core.logging import configure_logging
 from portal_api.core.origin import OriginCheckMiddleware
 from portal_api.core.request_log import RequestLogMiddleware
+from portal_api.core.sentry import init_sentry
 from portal_api.db import get_sessionmaker
 from portal_api.routers import (
     admin_agent_versions,
@@ -40,6 +41,7 @@ from portal_api.services.llm_pricing import PricingCache, periodic_refresh
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     configure_logging(settings.log_level)
+    init_sentry(settings)
     session_local = get_sessionmaker()
     async with session_local() as session:
         await bootstrap_admin(session, settings)
