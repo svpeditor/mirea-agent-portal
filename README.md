@@ -10,9 +10,11 @@
 
 - ✅ Спек 1 «Фундамент платформы» — написан и закоммичен
 - ✅ План 1.1 — Контракт + Python-SDK + echo-агент (53 теста, tag `sdk-v0.1.0`)
-- ⏳ План 1.2 — Backend API + Job Queue + Docker-runner — следующий
-- ⏳ План 1.3 — Frontend
-- ⏳ План 1.4 — Перенос proverka под контракт
+- ✅ План 1.2 — Backend API + Job Queue + Docker-runner + LLM-прокси (1.2.1-1.2.4)
+- 🟡 План 1.3 — Frontend (PR #6, ждёт ручной merge)
+- 🟡 План 1.4 — Перенос реальных агентов:
+  - milestone-0: stub-агенты `agents/proverka_stub/` и `agents/science_agent_stub/` (этот PR)
+  - milestone-1: real-код после ОК Дани
 
 Команда «агенты» может начинать писать агентов прямо сейчас:
 - Установить SDK: `pip install -e ./packages/portal-sdk-python`
@@ -31,12 +33,13 @@ docs/superpowers/mockups/ # HTML-макеты UI с брейнштормa
 Когда стартует имплементация — здесь появятся:
 
 ```
-apps/portal-frontend/     # Next.js + TS + Tailwind + shadcn/ui
+apps/portal-frontend/     # Next.js + TS + Tailwind + shadcn/ui (план 1.3, PR #6)
 apps/portal-api/          # FastAPI + Pydantic + SQLAlchemy async
 apps/portal-worker/       # RQ + Docker SDK
 packages/portal-sdk-python/  # SDK для писателей агентов
 agents/echo/              # reference-имплементация агента
-agents/proverka/          # перенесённый proverka под новый контракт
+agents/proverka_stub/     # stub под proverka (milestone-0 плана 1.4)
+agents/science_agent_stub/ # stub под science_agent (milestone-0 плана 1.4)
 ```
 
 ## Команды
