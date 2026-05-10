@@ -74,7 +74,13 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
     body: dict[str, object] = {"error": {"code": exc.code, "message": exc.message}}
     if exc.details is not None:
         body["error"]["details"] = exc.details  # type: ignore[index]
-    return JSONResponse(status_code=exc.status_code, content=body)
+    headers: dict[str, str] = {}
+    # Для LOGIN_RATE_LIMITED достаём retry_after из details и кладём в Retry-After.
+    if exc.code == "LOGIN_RATE_LIMITED" and exc.details:
+        retry_after = exc.details[0].get("retry_after_seconds") if exc.details else None
+        if isinstance(retry_after, int):
+            headers["Retry-After"] = str(retry_after)
+    return JSONResponse(status_code=exc.status_code, content=body, headers=headers)
 
 
 @app.exception_handler(RequestValidationError)

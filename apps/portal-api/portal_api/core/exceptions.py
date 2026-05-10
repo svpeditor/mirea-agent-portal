@@ -372,3 +372,15 @@ class NotImplementedAppError(AppError):
 
     def __init__(self, message: str = "Endpoint not implemented") -> None:
         super().__init__(code="not_implemented", message=message, status_code=501)
+
+
+class LoginRateLimitedError(AppError):
+    """Превышен лимит неудачных попыток логина — 429 + Retry-After."""
+
+    def __init__(self, retry_after_seconds: int) -> None:
+        super().__init__(
+            code="LOGIN_RATE_LIMITED",
+            message=f"Слишком много попыток входа. Попробуйте через {retry_after_seconds} с.",
+            status_code=429,
+            details=[{"retry_after_seconds": retry_after_seconds}],
+        )

@@ -5,11 +5,14 @@ from __future__ import annotations
 from fastapi import APIRouter, Cookie, Depends, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from portal_api.config import get_settings
+from portal_api.config import Settings, get_settings
+from portal_api.core.exceptions import InvalidCredentials, LoginRateLimitedError
 from portal_api.deps import get_db
+from portal_api.deps import get_settings as deps_get_settings
 from portal_api.schemas.auth import AuthResponse, LoginIn, RegisterIn
 from portal_api.schemas.user import UserOut
 from portal_api.services import auth_service
+from portal_api.services.login_rate_limit import LoginRateLimit
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -85,14 +88,30 @@ async def login(
     request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db),
+    settings: Settings = Depends(deps_get_settings),
 ) -> AuthResponse:
-    user, access, refresh = await auth_service.login(
-        db,
-        email=payload.email,
-        password=payload.password,
-        user_agent=request.headers.get("user-agent"),
-        ip=request.client.host if request.client else None,
-    )
+    ip = request.client.host if request.client else ""
+    rl = LoginRateLimit(redis_url=str(settings.redis_url))
+
+    allowed, retry_after = await rl.check(ip, payload.email)
+    if not allowed:
+        # Retry-After ставится в exception_handler из details.
+        raise LoginRateLimitedError(retry_after_seconds=retry_after)
+
+    try:
+        user, access, refresh = await auth_service.login(
+            db,
+            email=payload.email,
+            password=payload.password,
+            user_agent=request.headers.get("user-agent"),
+            ip=ip or None,
+        )
+    except InvalidCredentials:
+        await rl.record_failure(ip, payload.email)
+        raise
+
+    # успех — сбросим счётчик попыток для этой пары
+    await rl.reset(ip, payload.email)
     _set_auth_cookies(response, access, refresh)
     return AuthResponse(user=UserOut.model_validate(user))
 
