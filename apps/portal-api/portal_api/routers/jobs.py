@@ -132,8 +132,7 @@ async def list_jobs(
 ) -> list[JobListItemOut]:
     if limit < 1 or limit > 100:
         raise HTTPException(status_code=400, detail="limit must be 1..100")
-    jobs = await job_service.list_for_user(db, user, limit=limit, before=before)
-    return [JobListItemOut.model_validate(j) for j in jobs]
+    return await job_service.list_for_user(db, user, limit=limit, before=before)
 
 
 @router.get("/jobs/{job_id}", response_model=JobDetailOut)

@@ -84,6 +84,37 @@ async def test_list_pagination_cursor(user_client, db, admin_user) -> None:
 
 
 @pytest.mark.asyncio
+async def test_list_includes_agent_brief_and_cost(
+    user_client, db, admin_user, regular_user,
+) -> None:
+    """JobListItemOut должен содержать agent_slug/agent_name/cost_usd_total
+    через join на agent_version → agent. Frontend JobsTable рендерит
+    их вместо truncated UUID. cost_usd_total дефолтно "0" из БД."""
+    tab = await make_tab(db, slug="ld-en", name="T", order_idx=1)
+    agent = await make_agent(
+        db, slug="enriched", name="Эталон Эхо", tab_id=tab.id,
+        created_by_user_id=admin_user.id, enabled=True,
+    )
+    v = await make_agent_version(
+        db, agent_id=agent.id, created_by_user_id=admin_user.id, status="ready",
+    )
+    agent.current_version_id = v.id
+    await db.commit()
+
+    await _login(user_client, regular_user)
+    await _create_job(user_client, "enriched")
+    resp = await user_client.get("/api/jobs")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body) == 1
+    item = body[0]
+    assert item["agent_slug"] == "enriched"
+    assert item["agent_name"] == "Эталон Эхо"
+    # Numeric(10,6) сериализуется как строка через pydantic Decimal
+    assert item["cost_usd_total"] == "0.000000"
+
+
+@pytest.mark.asyncio
 async def test_get_detail_owner(user_client, db, admin_user) -> None:
     await _ready_agent(db, admin_user, slug="det")
     r = await _create_job(user_client, "det")

@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from portal_api.core.exceptions import AgentNotFoundError, AgentNotReadyError, QuotaExhaustedError
 from portal_api.models import Agent, AgentVersion, Job, User, UserQuota
+from portal_api.schemas.job import JobListItemOut
 from portal_api.services import ephemeral_token as eph_svc
 
 
@@ -94,9 +95,29 @@ async def list_for_user(
     *,
     limit: int = 20,
     before: uuid.UUID | None = None,
-) -> list[Job]:
-    """Cursor pagination — (created_at DESC, id DESC), before=id предыдущей страницы."""
-    stmt = select(Job).where(Job.created_by_user_id == user.id)
+) -> list[JobListItemOut]:
+    """Cursor pagination — (created_at DESC, id DESC), before=id предыдущей страницы.
+
+    Возвращает enriched DTO с agent_slug/agent_name через join на
+    agent_versions/agents (frontend JobsTable рендерит их вместо UUID).
+    """
+    stmt = (
+        select(
+            Job.id,
+            Job.status,
+            Job.agent_version_id,
+            Agent.slug.label("agent_slug"),
+            Agent.name.label("agent_name"),
+            Job.cost_usd_total,
+            Job.created_at,
+            Job.started_at,
+            Job.finished_at,
+            Job.error_code,
+        )
+        .join(AgentVersion, AgentVersion.id == Job.agent_version_id)
+        .join(Agent, Agent.id == AgentVersion.agent_id)
+        .where(Job.created_by_user_id == user.id)
+    )
     if before is not None:
         before_job = (
             await session.execute(select(Job).where(Job.id == before))
@@ -111,7 +132,8 @@ async def list_for_user(
                 )
             )
     stmt = stmt.order_by(Job.created_at.desc(), Job.id.desc()).limit(limit)
-    return list((await session.execute(stmt)).scalars().all())
+    rows = (await session.execute(stmt)).all()
+    return [JobListItemOut.model_validate(row, from_attributes=True) for row in rows]
 
 
 async def cancel_job(
