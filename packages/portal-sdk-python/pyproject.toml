@@ -21,6 +21,7 @@ dev = [
 
 [project.scripts]
 portal-sdk-run-local = "portal_sdk.local_runner:main"
+portal-sdk-validate-manifest = "portal_sdk.validate_manifest:main"
 
 [build-system]
 requires = ["hatchling"]

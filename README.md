@@ -15,9 +15,12 @@
 - ⏳ План 1.4 — Перенос proverka под контракт
 
 Команда «агенты» может начинать писать агентов прямо сейчас:
+- Прочитать **гид разработчика**: [`docs/agent-developer-guide.md`](docs/agent-developer-guide.md)
 - Установить SDK: `pip install -e ./packages/portal-sdk-python`
-- Прочитать контракт: `docs/contract.md`
+- Прочитать контракт: [`docs/contract.md`](docs/contract.md)
 - Скопировать `agents/echo/` как шаблон
+- Подключить JSON Schema в IDE через `# yaml-language-server: $schema=...` (см. [`docs/manifest.schema.json`](docs/manifest.schema.json))
+- Проверить манифест: `portal-sdk-validate-manifest .`
 - Запустить локально: `portal-sdk-run-local <agent_dir>`
 
 ## Что есть в репо
