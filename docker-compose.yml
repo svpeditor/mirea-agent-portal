@@ -61,6 +61,11 @@ services:
     build:
       context: .
       dockerfile: apps/portal-worker/Dockerfile
+    # recover_orphaned_builds на старте читает таблицу agent_versions; если api
+    # ещё не закончил alembic upgrade head — падаем с UndefinedTable.
+    # depends_on: api ждать нельзя (у api нет healthcheck'а на миграции),
+    # поэтому крутимся через restart до 3 раз.
+    restart: on-failure:3
     environment:
       DATABASE_URL: postgresql+psycopg2://portal:portal@postgres:5432/portal
       REDIS_URL: redis://redis:6379/0
