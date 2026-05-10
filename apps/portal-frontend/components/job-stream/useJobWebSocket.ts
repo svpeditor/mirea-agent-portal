@@ -39,7 +39,34 @@ export function useJobWebSocket({ jobId, initialEvents, onTerminal }: Props): Re
 
       ws.onopen = () => setConnected(true);
       ws.onmessage = (e) => {
-        const event = JSON.parse(e.data) as JobEventOut;
+        const msg = JSON.parse(e.data) as
+          | JobEventOut
+          | { type: 'resync'; events: JobEventOut[] };
+
+        // Resync — пришёл список пропущенных событий, не отдельное событие.
+        if ((msg as { type?: string }).type === 'resync') {
+          const incoming = ((msg as { events?: JobEventOut[] }).events ?? []).filter(
+            (x) => typeof x.seq === 'number' && typeof x.ts === 'string',
+          );
+          if (incoming.length === 0) return;
+          setEvents((prev) => {
+            const known = new Set(prev.map((x) => x.seq));
+            const fresh = incoming.filter((x) => !known.has(x.seq));
+            return [...prev, ...fresh].sort((a, b) => a.seq - b.seq);
+          });
+          const lastSeq = Math.max(...incoming.map((x) => x.seq));
+          if (lastSeq > lastSeqRef.current) lastSeqRef.current = lastSeq;
+          const terminal = incoming.find((x) => TERMINAL_TYPES.has(x.type));
+          if (terminal) {
+            isTerminalRef.current = true;
+            onTerminalRef.current(terminal.type);
+            ws.close();
+          }
+          return;
+        }
+
+        const event = msg as JobEventOut;
+        if (typeof event.seq !== 'number' || typeof event.ts !== 'string') return;
         setEvents((prev) => [...prev, event]);
         lastSeqRef.current = event.seq;
         if (TERMINAL_TYPES.has(event.type)) {

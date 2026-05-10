@@ -24,7 +24,20 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str)
         path="/",
         httponly=True,
         secure=settings.cookie_secure,
-        samesite="strict",
+        samesite="lax",
+        domain=settings.cookie_domain,
+    )
+    # Дубль для WebSocket: cross-port handshake не получает httpOnly access_token
+    # из Set-Cookie. Этот cookie не httpOnly — frontend читает document.cookie
+    # и подставляет в ws://...?token=. Содержит тот же JWT, но без httpOnly.
+    response.set_cookie(
+        key="ws_token",
+        value=access_token,
+        max_age=settings.jwt_access_ttl_seconds,
+        path="/",
+        httponly=False,
+        secure=settings.cookie_secure,
+        samesite="lax",
         domain=settings.cookie_domain,
     )
     response.set_cookie(
@@ -34,7 +47,7 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str)
         path="/",
         httponly=True,
         secure=settings.cookie_secure,
-        samesite="strict",
+        samesite="lax",
         domain=settings.cookie_domain,
     )
 
@@ -45,7 +58,7 @@ def _clear_auth_cookies(response: Response) -> None:
         "access_token",
         path="/",
         domain=settings.cookie_domain,
-        samesite="strict",
+        samesite="lax",
         secure=settings.cookie_secure,
         httponly=True,
     )
@@ -53,7 +66,7 @@ def _clear_auth_cookies(response: Response) -> None:
         "refresh_token",
         path="/",
         domain=settings.cookie_domain,
-        samesite="strict",
+        samesite="lax",
         secure=settings.cookie_secure,
         httponly=True,
     )
