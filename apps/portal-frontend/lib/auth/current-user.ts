@@ -1,5 +1,6 @@
 import 'server-only';
 import { cache } from 'react';
+import { forbidden } from 'next/navigation';
 import { apiServer } from '@/lib/api/server';
 import { ApiError, type UserMeOut } from '@/lib/api/types';
 
@@ -32,12 +33,13 @@ export async function requireUser(): Promise<UserMeOut> {
 }
 
 /**
- * Гарантирует admin role. Бросает 403 если не admin.
+ * Гарантирует admin role. Использует Next.js 15.1+ `forbidden()` — он
+ * рендерит app/forbidden.tsx (HTTP 403), а не 500 error page.
  */
 export async function requireAdmin(): Promise<UserMeOut> {
   const user = await requireUser();
   if (user.role !== 'admin') {
-    throw new ApiError(403, { error: { code: 'forbidden', message: 'Admin only' } });
+    forbidden();
   }
   return user;
 }
