@@ -110,6 +110,10 @@ export interface JobListItemOut {
   id: string;
   status: JobStatus;
   agent_version_id: string;
+  /** Из backend PR #7 — может отсутствовать пока PR не замержен. */
+  agent_slug?: string | null;
+  agent_name?: string | null;
+  cost_usd_total?: string | null;
   created_at: string;
   started_at: string | null;
   finished_at: string | null;
