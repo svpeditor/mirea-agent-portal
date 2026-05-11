@@ -20,6 +20,7 @@ export interface AgentAdminOut {
   current_version_id: string | null;
   enabled: boolean;
   git_url: string;
+  cost_cap_usd: string | null;
   created_at: string;
   updated_at: string;
   latest_version: AgentLatestBrief | null;
@@ -95,6 +96,7 @@ export default async function AdminAgentsPage({
           agentSlug={selected.slug}
           gitUrl={selected.git_url}
           enabled={selected.enabled}
+          costCapUsd={selected.cost_cap_usd}
         />
       )}
     </div>

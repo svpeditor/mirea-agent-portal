@@ -116,12 +116,11 @@ async def update_agent_endpoint(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ) -> AgentAdminOut:
-    agent = await agent_service.update_agent(
-        db,
-        agent_id,
-        tab_id=payload.tab_id,
-        enabled=payload.enabled,
-    )
+    update_kwargs: dict = {"tab_id": payload.tab_id, "enabled": payload.enabled}
+    # cost_cap_usd: если поле явно в payload (включая null), пробрасываем.
+    if "cost_cap_usd" in payload.model_fields_set:
+        update_kwargs["cost_cap_usd"] = payload.cost_cap_usd
+    agent = await agent_service.update_agent(db, agent_id, **update_kwargs)
     ip, ua = audit_service.request_meta(request)
     await audit_service.log_action(
         db,

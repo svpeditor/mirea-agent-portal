@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
 from pydantic import AnyUrl, BaseModel, ConfigDict, Field
@@ -57,6 +58,7 @@ class AgentAdminOut(BaseModel):
     current_version_id: uuid.UUID | None
     enabled: bool
     git_url: str
+    cost_cap_usd: Decimal | None = None
     created_at: datetime
     updated_at: datetime
     latest_version: AgentLatestVersionAdminBrief | None = None
@@ -70,3 +72,4 @@ class AgentCreateIn(BaseModel):
 class AgentUpdateIn(BaseModel):
     tab_id: uuid.UUID | None = None
     enabled: bool | None = None
+    cost_cap_usd: Decimal | None = Field(default=None, ge=Decimal("0"))
