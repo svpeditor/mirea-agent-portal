@@ -3,6 +3,7 @@ from portal_api.models.admin_audit_log import AdminAuditLog
 from portal_api.models.agent import Agent
 from portal_api.models.agent_version import AgentVersion
 from portal_api.models.base import Base
+from portal_api.models.cron_job import CronJob
 from portal_api.models.invite import Invite
 from portal_api.models.job import Job
 from portal_api.models.job_event import JobEvent
@@ -17,6 +18,7 @@ __all__ = [
     "Agent",
     "AgentVersion",
     "Base",
+    "CronJob",
     "EphemeralToken",
     "Invite",
     "Job",
