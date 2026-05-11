@@ -74,7 +74,6 @@ export default async function AgentDetailPage({
         </div>
 
         <h1 className="ed-display text-5xl md:text-7xl">
-          {agent.icon && <span className="mr-4 inline-block align-baseline text-4xl md:text-5xl">{agent.icon}</span>}
           {agent.name}
         </h1>
 
