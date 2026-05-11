@@ -1,5 +1,6 @@
 import { apiServer } from '@/lib/api/server';
 import { formatDate } from '@/lib/format';
+import { AuditFilterBar } from '@/components/admin/AuditFilterBar';
 
 interface AuditLogOut {
   id: string;
@@ -67,6 +68,8 @@ export default async function AdminAuditPage({
           </div>
         </div>
       </div>
+
+      <AuditFilterBar active={sp.resource_type ?? ''} />
 
       <div className="border-t-2 border-[color:var(--color-text-primary)]">
         <div className="hidden grid-cols-[160px_180px_200px_1fr_140px] items-baseline gap-4 border-b border-[color:var(--color-rule-mute)] py-3 md:grid">
