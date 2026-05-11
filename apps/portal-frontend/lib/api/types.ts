@@ -14,6 +14,7 @@ export interface UserOut {
   monthly_budget_usd: string;  // Decimal as string
   has_avatar: boolean;
   avatar_version: string | null;
+  notify_on_job_finish: boolean;
   created_at: string;
 }
 

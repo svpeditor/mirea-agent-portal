@@ -243,6 +243,7 @@ def _finalize(
     exit_code: int | None = None,
 ) -> None:
     with session_factory() as session:  # type: ignore[operator]
+        finished_at = datetime.now(UTC)
         session.execute(text("""
             UPDATE jobs SET status=:st, error_code=:ec, error_msg=:em,
                              exit_code=:exc, finished_at=:now,
@@ -254,5 +255,40 @@ def _finalize(
                              )
             WHERE id=:vid
         """), {"st": status, "ec": error_code, "em": error_msg,
-               "exc": exit_code, "now": datetime.now(UTC), "vid": vid})
+               "exc": exit_code, "now": finished_at, "vid": vid})
+
+        # Email-уведомление если opt-in и job шёл достаточно долго.
+        row = session.execute(text("""
+            SELECT u.email, u.display_name, u.notify_on_job_finish,
+                   a.name AS agent_name,
+                   j.started_at
+            FROM jobs j
+            JOIN agent_versions av ON av.id = j.agent_version_id
+            JOIN agents a ON a.id = av.agent_id
+            JOIN users u ON u.id = j.created_by_user_id
+            WHERE j.id = :vid
+        """), {"vid": vid}).first()
         session.commit()
+
+        if row and row.notify_on_job_finish:
+            from portal_worker.config import get_settings as _gs
+            from portal_worker.services.email import send_job_finished_email
+            cfg = _gs()
+            duration = 0
+            if row.started_at:
+                duration = max(0, int((finished_at - row.started_at).total_seconds()))
+            if duration >= cfg.email_min_job_duration_seconds:
+                send_job_finished_email(
+                    user_email=row.email,
+                    user_display_name=row.display_name,
+                    agent_name=row.agent_name,
+                    job_id=vid,
+                    job_status=status,
+                    duration_s=duration,
+                    base_url=cfg.portal_public_base_url,
+                    smtp_host=cfg.smtp_host,
+                    smtp_port=cfg.smtp_port,
+                    smtp_user=cfg.smtp_user,
+                    smtp_password=cfg.smtp_password,
+                    smtp_from=cfg.smtp_from,
+                )

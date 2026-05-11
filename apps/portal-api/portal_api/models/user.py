@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import CheckConstraint, DateTime, Numeric, String, Text, func, text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, Numeric, String, Text, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -33,6 +33,9 @@ class User(Base):
     )
     avatar_storage_key: Mapped[str | None] = mapped_column(Text, nullable=True)
     avatar_content_type: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notify_on_job_finish: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false"),
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
