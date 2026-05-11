@@ -22,8 +22,11 @@ services:
 
   api:
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:8000:8000"
+    # !reset убирает порт из base compose (там '8000:8000' на 0.0.0.0).
+    # В prod 0.0.0.0:8000 уже занят nginx — биндим на 127.0.0.1:8001
+    # и проксируем через nginx.
+    ports: !override
+      - "127.0.0.1:8001:8000"
     environment:
       ENVIRONMENT: prod
       COOKIE_SECURE: "true"
@@ -34,7 +37,7 @@ services:
 
   frontend:
     restart: unless-stopped
-    ports:
+    ports: !override
       - "127.0.0.1:3000:3000"
     environment:
       NEXT_PUBLIC_WS_URL: wss://${PUBLIC_DOMAIN}
