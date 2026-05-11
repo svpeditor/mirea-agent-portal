@@ -15,11 +15,12 @@ import sqlalchemy as sa
 from dateutil.relativedelta import relativedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from portal_api.config import get_settings
 from portal_api.core.exceptions import (
     PerJobCapExceededError,
     QuotaExhaustedError,
 )
-from portal_api.models import Job, UserQuota
+from portal_api.models import Job, User, UserQuota
 
 MSK_OFFSET = timedelta(hours=3)
 
@@ -54,7 +55,26 @@ async def preflight(
         await db.execute(
             sa.select(UserQuota).where(UserQuota.user_id == user_id).with_for_update()
         )
-    ).scalar_one()
+    ).scalar_one_or_none()
+    if quota is None:
+        # Lazy backfill: бутстрапнутый админ и старые юзеры из preview-БД
+        # могут не иметь quota-строки. Создаём дефолтную по роли.
+        user = (
+            await db.execute(sa.select(User).where(User.id == user_id))
+        ).scalar_one()
+        settings = get_settings()
+        monthly = (
+            Decimal("999999.9999") if user.role == "admin"
+            else settings.llm_default_user_quota_usd
+        )
+        quota = UserQuota(
+            user_id=user_id,
+            monthly_limit_usd=monthly,
+            per_job_cap_usd=settings.llm_default_per_job_cap_usd,
+            period_starts_at=_floor_to_month_start_msk_utc(now),
+        )
+        db.add(quota)
+        await db.flush()
 
     if now >= quota.period_starts_at + relativedelta(months=1):
         quota.period_used_usd = Decimal("0.0000")
