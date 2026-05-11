@@ -123,6 +123,35 @@ async def test_postflight_increments_used_and_job_total(
 
 
 @pytest.mark.asyncio
+async def test_preflight_lazy_backfill_creates_missing_quota(
+    db: AsyncSession, admin_user, llm_job
+) -> None:
+    """Если UserQuota отсутствует, preflight создаёт дефолтную, а не падает 500."""
+    from tests.factories import make_agent, make_agent_version, make_job, make_tab, make_user
+
+    u = await make_user(db, email="nq@x.x", password="testpasswordY1")
+    tab2 = await make_tab(db, slug="t-q2", name="T2", order_idx=2)
+    agent = await make_agent(
+        db, slug="a-q2", tab_id=tab2.id, created_by_user_id=admin_user.id
+    )
+    av = await make_agent_version(
+        db, agent_id=agent.id, created_by_user_id=admin_user.id, status="ready"
+    )
+    job = await make_job(db, agent_version_id=av.id, user_id=u.id)
+    await db.commit()
+
+    assert await db.get(UserQuota, u.id) is None
+
+    await llm_quota.preflight(
+        db, user_id=u.id, job_id=job.id, estimated_cost=Decimal("0.0010")
+    )
+
+    q_after = await db.get(UserQuota, u.id)
+    assert q_after is not None
+    assert q_after.monthly_limit_usd > Decimal("0")
+
+
+@pytest.mark.asyncio
 async def test_lazy_month_reset(db: AsyncSession, quota_user, llm_job) -> None:
     """period_starts_at < 1 мес назад → preflight ресетит period_used + двигает период."""
     await db.execute(
