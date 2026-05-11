@@ -4,6 +4,9 @@ import { apiServer } from '@/lib/api/server';
 import type { JobListItemOut } from '@/lib/api/types';
 import { JobsTable } from '@/components/jobs/JobsTable';
 import { JobsAutoRefresh } from '@/components/jobs/JobsAutoRefresh';
+import { JobsPagination } from '@/components/jobs/JobsPagination';
+
+const PAGE_SIZE = 50;
 
 export default async function AdminJobsPage({
   searchParams,
@@ -11,10 +14,12 @@ export default async function AdminJobsPage({
   searchParams: Promise<{ cursor?: string }>;
 }) {
   const sp = await searchParams;
-  const query = new URLSearchParams({ limit: '50' });
+  const query = new URLSearchParams({ limit: String(PAGE_SIZE) });
   if (sp.cursor) query.set('before', sp.cursor);
   const jobs = await apiServer<JobListItemOut[]>(`/api/admin/jobs?${query}`);
   const hasActiveJobs = jobs.some((j) => j.status === 'queued' || j.status === 'running');
+  const hasMore = jobs.length === PAGE_SIZE;
+  const lastId = jobs[jobs.length - 1]?.id ?? null;
 
   return (
     <div className="mx-auto max-w-[1400px] px-8 py-12">
@@ -56,9 +61,12 @@ export default async function AdminJobsPage({
           </p>
         </div>
       ) : (
-        <div className="ed-anim-rise ed-d-2">
-          <JobsTable jobs={jobs} />
-        </div>
+        <>
+          <div className="ed-anim-rise ed-d-2">
+            <JobsTable jobs={jobs} />
+          </div>
+          <JobsPagination lastId={lastId} hasItems={jobs.length > 0} hasMore={hasMore} />
+        </>
       )}
     </div>
   );
