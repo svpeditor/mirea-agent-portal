@@ -6,26 +6,26 @@
 
 ## Статус
 
-🟢 **План 1.1 закрыт. SDK v0.1.0 опубликован.**
+🟢 **Спек 1 «Фундамент» технически готов.** Demo-инстанс работает.
 
-- ✅ Спек 1 «Фундамент платформы» — написан и закоммичен
 - ✅ План 1.1 — Контракт + Python-SDK + echo-агент (tag `sdk-v0.1.0`)
-- ✅ План 1.2 — Backend API + Job Queue + Docker-runner + LLM-прокси (1.2.1-1.2.4)
-- 🟡 План 1.3 — Frontend (PR #6)
+- ✅ План 1.2 — Backend API + Job Queue + Docker-runner + LLM-прокси
+- ✅ План 1.3 — Frontend (PR #6 — пока на review)
 - 🟡 План 1.4 — Перенос реальных агентов:
-  - milestone-0: stub-агенты `agents/proverka_stub/` и `agents/science_agent_stub/` (PR #11)
-  - milestone-1: real-код после ОК владельца платформы
+  - milestone-0: stub-агенты `agents/proverka_stub/` и `agents/science_agent_stub/` опубликованы
+  - milestone-1: real-код — ждёт ОК от куратора НУГ (см. `QUESTIONS_FOR_DANYA.md`)
 
-Команда «агенты» может начинать писать агентов прямо сейчас:
+Команда «агенты» — пишут агентов:
 - **Гид разработчика**: [`docs/agent-developer-guide.md`](docs/agent-developer-guide.md)
 - Контракт: [`docs/contract.md`](docs/contract.md)
 - JSON Schema для IDE: [`docs/manifest.schema.json`](docs/manifest.schema.json)
-- Установить SDK: `pip install -e ./packages/portal-sdk-python`
+- Установить Python SDK: `pip install -e ./packages/portal-sdk-python`
+- Или TypeScript SDK: `npm install ./packages/portal-sdk-ts`
 - Скопировать `agents/echo/` как шаблон
 - Проверить манифест: `portal-sdk-validate-manifest .`
 - Запустить локально: `portal-sdk-run-local <agent_dir>`
 
-Деплой: см. [`docs/deploy-guide.md`](docs/deploy-guide.md).
+Деплой: [`docs/deploy-guide.md`](docs/deploy-guide.md).
 
 ## Что есть в репо
 
@@ -38,15 +38,12 @@ docs/superpowers/mockups/ # HTML-макеты UI с брейнштормa
 Когда стартует имплементация — здесь появятся:
 
 ```
-apps/portal-frontend/        # Next.js + TS + Tailwind + shadcn/ui (план 1.3, PR #6)
-apps/portal-api/             # FastAPI + Pydantic + SQLAlchemy async
-apps/portal-worker/          # RQ + Docker SDK
+apps/portal-frontend/     # Next.js + TS + Tailwind + shadcn/ui
+apps/portal-api/          # FastAPI + Pydantic + SQLAlchemy async
+apps/portal-worker/       # RQ + Docker SDK
 packages/portal-sdk-python/  # SDK для писателей агентов
-agents/echo/                 # reference-имплементация агента
-agents/proverka_stub/        # stub под proverka (план 1.4 milestone-0)
-agents/science_agent_stub/   # stub под science_agent (план 1.4 milestone-0)
-scripts/                     # backup-db.sh / restore-db.sh
-.github/workflows/           # CI
+agents/echo/              # reference-имплементация агента
+agents/proverka/          # перенесённый proverka под новый контракт
 ```
 
 ## Команды
@@ -79,3 +76,17 @@ scripts/                     # backup-db.sh / restore-db.sh
 | 3. Поиск статей | Новый агент: arXiv + Semantic Scholar + Crossref | Агенты |
 | 4. Конструктор | Полноценный визуальный конструктор агентов через UI | Портал |
 | 5. SDK + доки | SDK на других языках, документация для писателей агентов | Портал (parallel) |
+
+## Frontend (Next.js)
+
+Frontend живёт в `apps/portal-frontend/`. Запуск:
+
+```bash
+docker compose up -d frontend
+# или для dev:
+cd apps/portal-frontend && npm run dev
+```
+
+Открывается на http://localhost:3000. Бэкенд должен быть на :8000 (`docker compose up api`).
+
+См. `apps/portal-frontend/README.md` для подробностей.

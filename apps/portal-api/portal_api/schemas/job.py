@@ -1,16 +1,18 @@
 """DTO для jobs.
 
-JobListItemOut и JobFileOut поддерживают `model_validate(orm)` через
-`from_attributes=True`. Остальные DTO (JobCreatedOut, JobDetailOut,
-JobEventOut) собираются в service layer вручную из-за переименования полей
-(event_type→type, payload_jsonb→payload, params_jsonb→params,
-output_summary_jsonb→output_summary) или service-computed полей
-(agent_slug, events_count, last_event_seq, agent).
-"""
+JobFileOut поддерживает `model_validate(orm)` через `from_attributes=True`.
+JobListItemOut собирается в service layer из join'а Job→AgentVersion→Agent
+(agent_slug/agent_name приходят со связанной таблицы). Остальные DTO
+(JobCreatedOut, JobDetailOut, JobEventOut) собираются вручную из-за
+переименования полей (event_type→type, payload_jsonb→payload,
+params_jsonb→params, output_summary_jsonb→output_summary) или
+service-computed полей (events_count, last_event_seq, agent).
+"""  # noqa: RUF002
 from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
@@ -25,14 +27,23 @@ class JobCreatedOut(BaseModel):
 
 
 class JobListItemOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    """Item в GET /api/jobs.
+
+    agent_slug/agent_name приходят с агента через agent_version_id-join.
+    cost_usd_total — с jobs.cost_usd_total (Numeric(10,6), сериализуется как string).
+    """
+
     id: uuid.UUID
     status: str
     agent_version_id: uuid.UUID
+    agent_slug: str
+    agent_name: str
+    cost_usd_total: Decimal
     created_at: datetime
     started_at: datetime | None
     finished_at: datetime | None
     error_code: str | None
+    model_config = ConfigDict(from_attributes=True)
 
 
 class JobAgentBrief(BaseModel):

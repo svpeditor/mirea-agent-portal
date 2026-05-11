@@ -16,9 +16,14 @@ _4401 = 4401  # custom WS close code: unauthenticated
 
 
 async def get_current_user_ws(websocket: WebSocket, session: AsyncSession) -> User:
-    """Извлечь юзера из access cookie. Иначе закрыть с кодом 4401."""
+    """Извлечь юзера из access cookie или ?token= query. Иначе закрыть 4401."""
     cookies = websocket.cookies
     token = cookies.get("access_token")
+    if not token:
+        # Fallback: query param. Нужен когда cookies не приходят cross-port
+        # (например frontend на :3000, api на :8000, browser считает cross-origin
+        # для WebSocket-subresource-handshake даже на same-site).
+        token = websocket.query_params.get("token")
     if not token:
         raise WebSocketException(code=_4401, reason="no_auth")
     try:

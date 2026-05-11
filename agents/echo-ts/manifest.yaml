@@ -1,0 +1,49 @@
+id: echo-ts
+name: "Echo TS (диагностика, TypeScript)"
+version: "0.1.0"
+category: "научная-работа"
+icon: "🟦"
+short_description: |
+  TypeScript-эквивалент агента Echo. Принимает текст, возвращает Word
+  с этим же текстом и небольшой сводкой. Доказывает что TS-SDK работает.
+
+inputs:
+  message:
+    type: text
+    label: "Сообщение"
+    placeholder: "что повторить"
+    required: true
+  loops:
+    type: number
+    label: "Сколько раз повторить"
+    default: 5
+    min: 1
+    max: 100
+  shout:
+    type: checkbox
+    label: "В верхнем регистре"
+    default: false
+
+files: {}
+
+outputs:
+  - id: report
+    type: docx
+    label: "Echo Word (TS)"
+    filename: "echo.docx"
+    primary: true
+  - id: summary
+    type: json
+    label: "Параметры запуска"
+    filename: "summary.json"
+
+runtime:
+  docker:
+    base_image: "node:20-alpine"
+    setup:
+      - "npm ci --omit=dev"
+    entrypoint: ["node", "agent.js"]
+  limits:
+    max_runtime_minutes: 2
+    max_memory_mb: 256
+    max_cpu_cores: 1

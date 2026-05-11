@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from portal_api.bootstrap import bootstrap_admin, bootstrap_tabs
@@ -16,6 +17,7 @@ from portal_api.core.exceptions import AppError
 from portal_api.core.logging import configure_logging
 from portal_api.core.origin import OriginCheckMiddleware
 from portal_api.core.request_log import RequestLogMiddleware
+from portal_api.core.sentry import init_sentry
 from portal_api.db import get_sessionmaker
 from portal_api.routers import (
     admin_agent_versions,
@@ -29,8 +31,11 @@ from portal_api.routers import (
     jobs_ws,
     me,
     public_agents,
+    public_catalog,
     public_tabs,
 )
+from portal_api.routers.admin_audit import router as admin_audit_router
+from portal_api.routers.admin_jobs import router as admin_jobs_router
 from portal_api.routers.admin_quota import router as admin_quota_router
 from portal_api.routers.llm_proxy import router as llm_proxy_router
 from portal_api.services.llm_pricing import PricingCache, periodic_refresh
@@ -40,6 +45,7 @@ from portal_api.services.llm_pricing import PricingCache, periodic_refresh
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     configure_logging(settings.log_level)
+    init_sentry(settings)
     session_local = get_sessionmaker()
     async with session_local() as session:
         await bootstrap_admin(session, settings)
@@ -65,6 +71,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="MIREA Agent Portal API", version="0.1.0", lifespan=lifespan)
 
+# Module-level get_settings() — environment is fixed at import time. Tests that need to
+# override settings.environment must do so via env vars before importing main.
+settings = get_settings()
+if settings.environment == "dev":
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:3000"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
 app.add_middleware(OriginCheckMiddleware)
 app.add_middleware(RequestLogMiddleware)  # outermost — sees status from inner middleware
 
@@ -74,7 +92,12 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
     body: dict[str, object] = {"error": {"code": exc.code, "message": exc.message}}
     if exc.details is not None:
         body["error"]["details"] = exc.details  # type: ignore[index]
-    return JSONResponse(status_code=exc.status_code, content=body)
+    headers: dict[str, str] = {}
+    if exc.code == "LOGIN_RATE_LIMITED" and exc.details:
+        retry_after = exc.details[0].get("retry_after_seconds") if exc.details else None
+        if isinstance(retry_after, int):
+            headers["Retry-After"] = str(retry_after)
+    return JSONResponse(status_code=exc.status_code, content=body, headers=headers)
 
 
 @app.exception_handler(RequestValidationError)
@@ -118,7 +141,10 @@ app.include_router(admin_agents.router, prefix="/api")
 app.include_router(admin_agent_versions.router, prefix="/api")
 app.include_router(public_tabs.router, prefix="/api")
 app.include_router(public_agents.router, prefix="/api")
+app.include_router(public_catalog.router, prefix="/api")
 app.include_router(jobs.router, prefix="/api")
 app.include_router(jobs_ws.router, prefix="/api")
 app.include_router(admin_quota_router)
+app.include_router(admin_audit_router, prefix="/api")
+app.include_router(admin_jobs_router, prefix="/api")
 app.include_router(llm_proxy_router)

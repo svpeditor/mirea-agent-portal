@@ -15,6 +15,7 @@ dependencies = [
     "docker>=7.1,<8",
     "PyYAML>=6.0,<7",
     "portal-sdk @ file:../../packages/portal-sdk-python",
+    "sentry-sdk[sqlalchemy]>=2.0,<3",
 ]
 
 [project.optional-dependencies]

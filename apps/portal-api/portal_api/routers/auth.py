@@ -5,11 +5,14 @@ from __future__ import annotations
 from fastapi import APIRouter, Cookie, Depends, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from portal_api.config import get_settings
+from portal_api.config import Settings, get_settings
+from portal_api.core.exceptions import InvalidCredentials, LoginRateLimitedError
 from portal_api.deps import get_db
+from portal_api.deps import get_settings as deps_get_settings
 from portal_api.schemas.auth import AuthResponse, LoginIn, RegisterIn
 from portal_api.schemas.user import UserOut
 from portal_api.services import auth_service
+from portal_api.services.login_rate_limit import LoginRateLimit
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -20,20 +23,33 @@ def _set_auth_cookies(response: Response, access_token: str, refresh_token: str)
         key="access_token",
         value=access_token,
         max_age=settings.jwt_access_ttl_seconds,
-        path="/api",
+        path="/",
         httponly=True,
         secure=settings.cookie_secure,
-        samesite="strict",
+        samesite="lax",
+        domain=settings.cookie_domain,
+    )
+    # Дубль для WebSocket: cross-port handshake не получает httpOnly access_token
+    # из Set-Cookie. Этот cookie не httpOnly — frontend читает document.cookie
+    # и подставляет в ws://...?token=. Содержит тот же JWT, но без httpOnly.
+    response.set_cookie(
+        key="ws_token",
+        value=access_token,
+        max_age=settings.jwt_access_ttl_seconds,
+        path="/",
+        httponly=False,
+        secure=settings.cookie_secure,
+        samesite="lax",
         domain=settings.cookie_domain,
     )
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         max_age=settings.jwt_refresh_ttl_seconds,
-        path="/api",
+        path="/",
         httponly=True,
         secure=settings.cookie_secure,
-        samesite="strict",
+        samesite="lax",
         domain=settings.cookie_domain,
     )
 
@@ -42,17 +58,25 @@ def _clear_auth_cookies(response: Response) -> None:
     settings = get_settings()
     response.delete_cookie(
         "access_token",
-        path="/api",
+        path="/",
         domain=settings.cookie_domain,
-        samesite="strict",
+        samesite="lax",
         secure=settings.cookie_secure,
         httponly=True,
     )
     response.delete_cookie(
-        "refresh_token",
-        path="/api",
+        "ws_token",
+        path="/",
         domain=settings.cookie_domain,
-        samesite="strict",
+        samesite="lax",
+        secure=settings.cookie_secure,
+        httponly=False,
+    )
+    response.delete_cookie(
+        "refresh_token",
+        path="/",
+        domain=settings.cookie_domain,
+        samesite="lax",
         secure=settings.cookie_secure,
         httponly=True,
     )
@@ -85,14 +109,30 @@ async def login(
     request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db),
+    settings: Settings = Depends(deps_get_settings),
 ) -> AuthResponse:
-    user, access, refresh = await auth_service.login(
-        db,
-        email=payload.email,
-        password=payload.password,
-        user_agent=request.headers.get("user-agent"),
-        ip=request.client.host if request.client else None,
-    )
+    ip = request.client.host if request.client else ""
+    rl = LoginRateLimit(redis_url=str(settings.redis_url))
+
+    allowed, retry_after = await rl.check(ip, payload.email)
+    if not allowed:
+        # Retry-After ставится в exception_handler из details.
+        raise LoginRateLimitedError(retry_after_seconds=retry_after)
+
+    try:
+        user, access, refresh = await auth_service.login(
+            db,
+            email=payload.email,
+            password=payload.password,
+            user_agent=request.headers.get("user-agent"),
+            ip=ip or None,
+        )
+    except InvalidCredentials:
+        await rl.record_failure(ip, payload.email)
+        raise
+
+    # успех — сбросим счётчик попыток для этой пары
+    await rl.reset(ip, payload.email)
     _set_auth_cookies(response, access, refresh)
     return AuthResponse(user=UserOut.model_validate(user))
 
@@ -123,3 +163,15 @@ async def refresh(
     )
     _set_auth_cookies(response, access, new_refresh)
     return AuthResponse(user=UserOut.model_validate(user))
+
+
+@router.get("/invite-info")
+async def invite_info(
+    token: str,
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, str | None]:
+    """Публичный endpoint для регистрации: проверка токена приглашения."""
+    from portal_api.services import invite_service
+
+    invite = await invite_service.find_valid_invite(db, token)
+    return {"email": invite.email if invite else None}

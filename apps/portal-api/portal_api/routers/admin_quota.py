@@ -6,7 +6,7 @@ import uuid
 from datetime import UTC, datetime
 
 import sqlalchemy as sa
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from portal_api.core.exceptions import UserNotFound
@@ -20,6 +20,8 @@ from portal_api.schemas.llm import (
     QuotaPatchSchema,
     UserQuotaSchema,
 )
+from portal_api.services import audit_service
+from portal_api.services.audit_service import A as Action
 
 router = APIRouter(
     prefix="/api/admin",
@@ -40,7 +42,9 @@ async def _get_quota_or_404(db: AsyncSession, user_id: uuid.UUID) -> UserQuota:
 async def patch_quota(
     user_id: uuid.UUID,
     payload: QuotaPatchSchema,
+    request: Request,
     db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
 ) -> UserQuota:
     quota = await _get_quota_or_404(db, user_id)
     if payload.monthly_limit_usd is not None:
@@ -50,13 +54,26 @@ async def patch_quota(
     quota.updated_at = datetime.now(UTC)
     await db.flush()
     await db.refresh(quota)
+    ip, ua = audit_service.request_meta(request)
+    await audit_service.log_action(
+        db,
+        actor_user_id=admin.id,
+        action=Action.USER_UPDATE_QUOTA,
+        resource_type="user_quota",
+        resource_id=str(user_id),
+        payload=payload.model_dump(exclude_none=True, mode="json"),
+        ip=ip,
+        user_agent=ua,
+    )
     return quota
 
 
 @router.post("/users/{user_id}/quota/reset", response_model=UserQuotaSchema)
 async def reset_quota(
     user_id: uuid.UUID,
+    request: Request,
     db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
 ) -> UserQuota:
     quota = await _get_quota_or_404(db, user_id)
     quota.period_used_usd = sa.text("0.0000")  # type: ignore[assignment]
@@ -64,6 +81,16 @@ async def reset_quota(
     quota.updated_at = datetime.now(UTC)
     await db.flush()
     await db.refresh(quota)
+    ip, ua = audit_service.request_meta(request)
+    await audit_service.log_action(
+        db,
+        actor_user_id=admin.id,
+        action=Action.USER_RESET_QUOTA,
+        resource_type="user_quota",
+        resource_id=str(user_id),
+        ip=ip,
+        user_agent=ua,
+    )
     return quota
 
 

@@ -27,7 +27,7 @@ from portal_worker.runner.output_verifier import (
     verify_outputs,
 )
 
-_BUILD_ROOT = Path("/tmp")  # noqa: S108
+_BUILD_ROOT = Path("/var/portal-files/jobs")  # named volume — путь одинаков в worker и виден Docker daemon когда тот монтирует agent-контейнер. /tmp/ был неработоспособным в docker-in-docker setup (worker /tmp ≠ host /tmp).
 
 
 def recover_orphaned_jobs() -> None:
@@ -117,7 +117,11 @@ def run_job(payload: dict | str) -> None:
         output_dir.mkdir(parents=True)
         if input_src.exists():
             for src in input_src.iterdir():
-                shutil.copy2(src, input_dir / src.name)
+                dst = input_dir / src.name
+                if src.is_dir():
+                    shutil.copytree(src, dst)
+                else:
+                    shutil.copy2(src, dst)
         params_path = workdir / "params.json"
         params_path.write_text(json.dumps(params))
 

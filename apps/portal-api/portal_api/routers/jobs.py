@@ -29,6 +29,7 @@ from portal_api.schemas.job import (
     JobCreatedOut,
     JobDetailOut,
     JobEventOut,
+    JobFileOut,
     JobListItemOut,
 )
 from portal_api.services import job_event_service, job_service
@@ -183,6 +184,26 @@ async def list_job_events(
     if job is None:
         raise JobNotFoundError()
     return await job_event_service.list_since(db, job_id, since=since, limit=limit)
+
+
+@router.get("/jobs/{job_id}/outputs", response_model=list[JobFileOut])
+async def list_job_outputs(
+    job_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> list[JobFileOut]:
+    """Список output-файлов job. Кому виден job, тому виден список (owner или admin)."""
+    from portal_api.core.exceptions import JobNotFoundError
+
+    job = await job_service.get_job_for_user(db, job_id, user)
+    if job is None:
+        raise JobNotFoundError()
+    rows = (await db.execute(
+        select(JobFile)
+        .where(JobFile.job_id == job_id, JobFile.kind == "output")
+        .order_by(JobFile.created_at, JobFile.filename)
+    )).scalars().all()
+    return [JobFileOut.model_validate(r) for r in rows]
 
 
 @router.get("/jobs/{job_id}/outputs/{file_id}")

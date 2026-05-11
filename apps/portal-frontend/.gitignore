@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+build
+.env
+.env*.local
+*.log
+playwright-report
+playwright/.cache
+test-results
+coverage

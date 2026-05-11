@@ -21,12 +21,14 @@ class JobEnqueuer:
         timeout_seconds: int,
         ephemeral_token: str | None = None,
     ) -> None:
-        extra: dict = {}
+        # run_job(payload) — принимает ОДИН аргумент: dict (с job_id + опц.
+        # ephemeral_token) либо str (legacy). RQ 2.x запрещает смешивать
+        # positional args с kwargs=, поэтому всё пакуем в один dict-payload.
+        payload: dict = {"job_id": str(job_id)}
         if ephemeral_token is not None:
-            extra["kwargs"] = {"ephemeral_token": ephemeral_token}
+            payload["ephemeral_token"] = ephemeral_token
         self._queue.enqueue(
             "portal_worker.tasks.run_job.run_job",
-            str(job_id),
+            args=[payload],
             job_timeout=timeout_seconds,
-            **extra,
         )

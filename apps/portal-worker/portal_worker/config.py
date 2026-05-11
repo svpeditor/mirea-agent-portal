@@ -62,6 +62,12 @@ class Settings(BaseSettings):
 
     # Логирование
     log_level: str = "INFO"
+    environment: str = "dev"
+
+    # Sentry (опционально)
+    sentry_dsn: str | None = None
+    sentry_traces_sample_rate: float = 0.0
+    sentry_release: str | None = None
 
 
 @lru_cache

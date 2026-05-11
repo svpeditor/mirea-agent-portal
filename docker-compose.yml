@@ -37,19 +37,29 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL}
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD}
-      ALLOWED_ORIGINS: '["http://localhost:3000","http://localhost:8000"]'
+      ALLOWED_ORIGINS: '["http://localhost:3000","http://localhost:8000","http://100.106.180.108:3000"]'
       COOKIE_SECURE: "false"
       ENVIRONMENT: ${ENVIRONMENT:-dev}
       RELOAD: ${RELOAD:-}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       LLM_ALLOWED_MODELS: ${LLM_ALLOWED_MODELS}
       LLM_PROXY_BASE_URL: http://api:8000/llm/v1
+      # Sentry (опционально). Без SENTRY_DSN init_sentry no-op.
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_RELEASE: ${SENTRY_RELEASE:-}
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0.0}
     ports:
       - "8000:8000"
     volumes:
       - ./apps/portal-api:/app
       - ./packages/portal-sdk-python:/portal-sdk-src:ro
-      - portal_files:/var/portal-files
+      - /var/portal-files:/var/portal-files
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')\" || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     depends_on:
       postgres: { condition: service_healthy }
       redis:    { condition: service_healthy }
@@ -61,18 +71,25 @@ services:
     build:
       context: .
       dockerfile: apps/portal-worker/Dockerfile
+    # recover_orphaned_builds на старте читает agent_versions; если api ещё
+    # не закончил alembic upgrade head — падаем с UndefinedTable. Restart
+    # до 3 раз закрывает race без сложного healthcheck.
+    restart: on-failure:3
     environment:
       DATABASE_URL: postgresql+psycopg2://portal:portal@postgres:5432/portal
       REDIS_URL: redis://redis:6379/0
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       PORTAL_SDK_PATH: /portal-sdk
       LLM_PROXY_BASE_URL: http://api:8000/llm/v1
-      LLM_AGENTS_NETWORK_NAME: portal-agents-net
+      LLM_AGENTS_NETWORK_NAME: agent_portal-wave0_portal-agents-net
       LLM_ALLOWED_MODELS: ${LLM_ALLOWED_MODELS}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_RELEASE: ${SENTRY_RELEASE:-}
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0.0}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./packages/portal-sdk-python:/portal-sdk:ro
-      - portal_files:/var/portal-files
+      - /var/portal-files:/var/portal-files
     depends_on:
       postgres: { condition: service_healthy }
       redis:    { condition: service_healthy }
@@ -81,10 +98,25 @@ services:
     networks:
       - portal-net
 
+  frontend:
+    build:
+      context: ./apps/portal-frontend
+      dockerfile: Dockerfile
+    environment:
+      API_BASE_URL: http://api:8000
+      NEXT_PUBLIC_WS_URL: ws://localhost:8000
+      NEXT_PUBLIC_APP_NAME: Портал НУГ
+      NEXT_TELEMETRY_DISABLED: "1"
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    networks: [portal-net]
+    depends_on:
+      api: { condition: service_healthy }
+
 volumes:
   postgres_data:
   redis_data:
-  portal_files:
 
 networks:
   portal-net:
