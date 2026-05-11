@@ -32,7 +32,7 @@ export default async function AgentsPage({
           <div className="ed-eyebrow mb-3 text-[color:var(--color-accent)]">
             РАЗДЕЛ I
           </div>
-          <h1 className="ed-masthead ed-anim-stamp text-6xl md:text-7xl">
+          <h1 className="ed-display text-6xl md:text-7xl">
             Каталог<br />
             <span className="italic">агентов.</span>
           </h1>
