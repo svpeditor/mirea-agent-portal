@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth/current-user';
 import { Topbar } from '@/components/topbar';
 import { CommandPalette } from '@/components/CommandPalette';
+import { AdminSubnav } from '@/components/admin/AdminSubnav';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
@@ -20,6 +21,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </div>
         </div>
       </div>
+      <AdminSubnav />
       <main>{children}</main>
     </div>
   );
