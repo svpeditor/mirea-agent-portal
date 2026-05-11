@@ -289,7 +289,21 @@ papers = r.json()["papers"]
 - `422` — невалидные параметры (пустой query, max_results > 100)
 - `502` — arXiv недоступен или вернул не-200
 
-Если нужен другой источник (Crossref, Semantic Scholar, NASA ADS) — это новая фича на portal-api. Не пытайся достучаться напрямую: упадёт `name resolution`.
+#### `GET /api/sandbox/crossref?query=<q>&rows=<n>`
+
+Прокси к [Crossref Works API](https://api.crossref.org/swagger-ui/index.html). Лучше всего подходит для **DOI**, **citation counts**, **journal venue**.
+
+Параметры: `query` (текст), `rows` (1-100). Возвращает `works[].doi/title/authors/year/venue/citation_count/url`.
+
+#### `GET /api/sandbox/semantic-scholar?query=<q>&limit=<n>`
+
+Прокси к [Semantic Scholar Graph API](https://api.semanticscholar.org/api-docs/graph). Даёт лучшие **abstracts** + `citationCount`, `referenceCount`. Возвращает `papers[].paper_id/title/abstract/authors/year/doi/arxiv_id/citation_count`.
+
+Rate limit: возвращает 429 `S2_RATE_LIMITED` при перегрузке (подожди минуту).
+
+#### Если нужен другой источник
+
+NASA ADS, OpenAlex, IEEE Xplore — новая фича на portal-api. Не пытайся достучаться напрямую: упадёт `name resolution`.
 
 ## Чек-лист перед публикацией
 
