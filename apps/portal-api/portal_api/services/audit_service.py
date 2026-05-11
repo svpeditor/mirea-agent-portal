@@ -95,6 +95,29 @@ def request_meta(request: Any) -> tuple[str | None, str | None]:
     return ip, user_agent
 
 
+async def cleanup_older_than(session: AsyncSession, *, days: int) -> int:
+    """Удалить audit-записи старше N дней. Возвращает количество удалённых."""
+    from datetime import UTC, datetime, timedelta
+
+    from sqlalchemy import delete
+
+    if days < 1:
+        raise ValueError("days must be >= 1")
+    cutoff = datetime.now(UTC) - timedelta(days=days)
+    # COUNT перед DELETE для возврата
+    result = await session.execute(
+        select(AdminAuditLog.id).where(AdminAuditLog.created_at < cutoff),
+    )
+    ids = [row[0] for row in result.all()]
+    if not ids:
+        return 0
+    await session.execute(
+        delete(AdminAuditLog).where(AdminAuditLog.id.in_(ids)),
+    )
+    await session.flush()
+    return len(ids)
+
+
 # Стандартные actions для consistency между роутерами.
 class A:
     INVITE_CREATE = "invite.create"

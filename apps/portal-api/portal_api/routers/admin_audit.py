@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from portal_api.deps import get_db, require_admin
@@ -36,3 +36,31 @@ async def list_audit(
         resource_type=resource_type,
     )
     return [AuditLogOut.from_orm_row(r) for r in rows]
+
+
+@router.post("/audit/cleanup")
+async def cleanup_audit(
+    days: int = 365,
+    request: Request = None,  # type: ignore[assignment]
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+) -> dict[str, int]:
+    """Удалить audit-записи старше N дней. По умолчанию 365.
+
+    Минимум — 30 дней (защита от accidental wipe). Возвращает {"deleted": N}.
+    """
+    if days < 30:
+        raise HTTPException(status_code=400, detail="days must be >= 30")
+    deleted = await audit_service.cleanup_older_than(db, days=days)
+    # Сам факт cleanup пишется в audit log
+    ip, ua = audit_service.request_meta(request)
+    await audit_service.log_action(
+        db,
+        actor_user_id=admin.id,
+        action="audit.cleanup",
+        resource_type="audit",
+        payload={"days": days, "deleted": deleted},
+        ip=ip,
+        user_agent=ua,
+    )
+    return {"deleted": deleted}
