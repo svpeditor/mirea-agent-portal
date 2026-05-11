@@ -15,7 +15,8 @@ from portal_api.schemas.invite import (
     InviteOut,
     InvitesListOut,
 )
-from portal_api.services import invite_service
+from portal_api.services import audit_service, invite_service
+from portal_api.services.audit_service import A as Action
 
 router = APIRouter(prefix="/admin/invites", tags=["admin"], dependencies=[Depends(require_admin)])
 
@@ -36,6 +37,19 @@ async def create_invite(
     )
     base = str(request.base_url).rstrip("/")
     registration_url = f"{base}/register?token={invite.token}"
+
+    ip, ua = audit_service.request_meta(request)
+    await audit_service.log_action(
+        db,
+        actor_user_id=admin.id,
+        action=Action.INVITE_CREATE,
+        resource_type="invite",
+        resource_id=str(invite.id),
+        payload={"email": invite.email},
+        ip=ip,
+        user_agent=ua,
+    )
+
     return InviteCreateOut(
         id=invite.id,
         token=invite.token,
@@ -57,8 +71,21 @@ async def list_invites(
 @router.delete("/{invite_id}")
 async def cancel_invite(
     invite_id: uuid.UUID,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ) -> dict[str, str]:
     await invite_service.cancel_invite(db, invite_id, by_admin=admin)
+
+    ip, ua = audit_service.request_meta(request)
+    await audit_service.log_action(
+        db,
+        actor_user_id=admin.id,
+        action=Action.INVITE_REVOKE,
+        resource_type="invite",
+        resource_id=str(invite_id),
+        ip=ip,
+        user_agent=ua,
+    )
+
     return {"status": "ok"}

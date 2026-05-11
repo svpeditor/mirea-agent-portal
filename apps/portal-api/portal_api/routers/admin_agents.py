@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from portal_api.config import Settings, get_settings
@@ -18,7 +18,8 @@ from portal_api.schemas.agent import (
     AgentUpdateIn,
 )
 from portal_api.schemas.agent_version import AgentVersionEnqueuedOut
-from portal_api.services import agent_service
+from portal_api.services import agent_service, audit_service
+from portal_api.services.audit_service import A as Action
 from portal_api.services.build_enqueue import BuildEnqueuer
 
 router = APIRouter(
@@ -71,6 +72,7 @@ async def get_agent_endpoint(
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_agent(
     payload: AgentCreateIn,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
     enqueuer: BuildEnqueuer = Depends(get_build_enqueuer),
@@ -82,6 +84,17 @@ async def create_agent(
         git_ref=payload.git_ref,
         settings=settings,
         created_by_user_id=admin.id,
+    )
+    ip, ua = audit_service.request_meta(request)
+    await audit_service.log_action(
+        db,
+        actor_user_id=admin.id,
+        action=Action.AGENT_CREATE,
+        resource_type="agent",
+        resource_id=str(agent.id),
+        payload={"git_url": str(payload.git_url), "git_ref": payload.git_ref},
+        ip=ip,
+        user_agent=ua,
     )
     await db.commit()
     await db.refresh(agent)
@@ -99,7 +112,9 @@ async def create_agent(
 async def update_agent_endpoint(
     agent_id: uuid.UUID,
     payload: AgentUpdateIn,
+    request: Request,
     db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
 ) -> AgentAdminOut:
     agent = await agent_service.update_agent(
         db,
@@ -107,13 +122,36 @@ async def update_agent_endpoint(
         tab_id=payload.tab_id,
         enabled=payload.enabled,
     )
+    ip, ua = audit_service.request_meta(request)
+    await audit_service.log_action(
+        db,
+        actor_user_id=admin.id,
+        action=Action.AGENT_UPDATE,
+        resource_type="agent",
+        resource_id=str(agent_id),
+        payload=payload.model_dump(exclude_none=True, mode="json"),
+        ip=ip,
+        user_agent=ua,
+    )
     return AgentAdminOut.model_validate(agent)
 
 
 @router.delete("/{agent_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_agent_endpoint(
     agent_id: uuid.UUID,
+    request: Request,
     db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
 ) -> Response:
     await agent_service.delete_agent(db, agent_id)
+    ip, ua = audit_service.request_meta(request)
+    await audit_service.log_action(
+        db,
+        actor_user_id=admin.id,
+        action=Action.AGENT_DELETE,
+        resource_type="agent",
+        resource_id=str(agent_id),
+        ip=ip,
+        user_agent=ua,
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
