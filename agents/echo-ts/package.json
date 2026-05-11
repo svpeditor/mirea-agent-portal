@@ -1,0 +1,16 @@
+{
+  "name": "echo-ts-agent",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "agent.js",
+  "scripts": {
+    "start": "node agent.js"
+  },
+  "dependencies": {
+    "@mirea/portal-sdk": "file:../../packages/portal-sdk-ts",
+    "docx": "^8.5.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
