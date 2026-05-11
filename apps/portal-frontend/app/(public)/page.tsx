@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Route } from 'next';
 import { ArrowUpRight, Beaker, Microscope, Send } from 'lucide-react';
+import { Ornament } from '@/components/Ornament';
 
 interface PublicCatalogAgent {
   slug: string;
@@ -77,14 +78,14 @@ export default async function LandingPage() {
           <span className="ed-meta">04.05.2026</span>
         </div>
 
-        {/* Massive serif headline — stacked, slightly off-grid */}
-        <h1 className="ed-display ed-anim-rise ed-d-2 text-[clamp(3.5rem,9vw,9rem)]">
+        {/* Wood-type masthead — stamp-printed reveal, stacked, off-grid */}
+        <h1 className="ed-masthead ed-anim-stamp ed-d-2 text-[clamp(3.5rem,9vw,9rem)]">
           Известия
         </h1>
-        <h1 className="ed-display ed-anim-rise ed-d-3 -mt-3 text-[clamp(3.5rem,9vw,9rem)]">
+        <h1 className="ed-masthead ed-anim-stamp ed-d-3 -mt-3 text-[clamp(3.5rem,9vw,9rem)]">
           <span className="italic text-[color:var(--color-accent)]">научно-учебной</span>
         </h1>
-        <h1 className="ed-display ed-anim-rise ed-d-4 -mt-3 text-[clamp(3.5rem,9vw,9rem)]">
+        <h1 className="ed-masthead ed-anim-stamp ed-d-4 -mt-3 text-[clamp(3.5rem,9vw,9rem)]">
           группы.
         </h1>
 
@@ -147,12 +148,13 @@ export default async function LandingPage() {
 
       {/* ─── ARTICLES / agent index ───────────────────────────────────── */}
       <section className="mx-auto max-w-[1400px] px-8 py-24">
-        <div className="mb-12 grid gap-8 md:grid-cols-[1fr_2fr]">
+        <Ornament variant="fleuron" />
+        <div className="mb-12 mt-8 grid gap-8 md:grid-cols-[1fr_2fr]">
           <div>
             <div className="ed-eyebrow mb-4 text-[color:var(--color-accent)]">
               СОДЕРЖАНИЕ ВЫПУСКА
             </div>
-            <h2 className="ed-section text-5xl">
+            <h2 className="ed-masthead text-5xl">
               Что<br/>
               сегодня<br/>
               <span className="italic">в&nbsp;портале.</span>
@@ -196,7 +198,7 @@ export default async function LandingPage() {
               {/* Main column */}
               <div className="min-w-0">
                 <div className="ed-eyebrow mb-3">{article.category}</div>
-                <h3 className="ed-display text-3xl md:text-4xl">
+                <h3 className="ed-masthead text-3xl md:text-4xl">
                   {article.name}
                 </h3>
                 <p className="mt-4 max-w-2xl font-serif text-base leading-relaxed text-[color:var(--color-text-secondary)]">

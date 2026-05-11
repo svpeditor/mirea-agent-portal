@@ -1,10 +1,12 @@
 import type { Metadata } from 'next';
-import { PT_Serif, PT_Sans, JetBrains_Mono } from 'next/font/google';
+import { PT_Serif, PT_Sans, JetBrains_Mono, Old_Standard_TT } from 'next/font/google';
 import './globals.css';
 import { Providers } from '@/components/providers';
 
-// Russian academic publishing aesthetic — Paratype family designed for Cyrillic typesetting,
-// JetBrains Mono for technical metadata. Together they evoke Известия Академии Наук × terminal.
+// Russian academic publishing aesthetic.
+// Body+display: PT Serif (Paratype, designed for Cyrillic).
+// Wood-type masthead: Old Standard TT (19th-c. journal headings, Cyrillic-ready).
+// UI body: PT Sans. Technical metadata: JetBrains Mono.
 const ptSerif = PT_Serif({
   subsets: ['latin', 'cyrillic'],
   weight: ['400', '700'],
@@ -28,6 +30,14 @@ const jetbrainsMono = JetBrains_Mono({
   display: 'swap',
 });
 
+const oldStandard = Old_Standard_TT({
+  subsets: ['latin', 'cyrillic'],
+  weight: ['400', '700'],
+  style: ['normal', 'italic'],
+  variable: '--font-old-standard',
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
   title: 'Известия НУГ',
   description:
@@ -38,7 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="ru"
-      className={`${ptSerif.variable} ${ptSans.variable} ${jetbrainsMono.variable}`}
+      className={`${ptSerif.variable} ${ptSans.variable} ${jetbrainsMono.variable} ${oldStandard.variable}`}
     >
       <body>
         <Providers>{children}</Providers>
