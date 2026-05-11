@@ -82,21 +82,26 @@ export function EventFeed({ events }: { events: JobEventOut[] }) {
   );
 }
 
-function formatEventMessage(event: JobEventOut): string {
+export function formatEventMessage(event: JobEventOut): string {
   const p = event.payload as Record<string, unknown>;
+  // SDK-контракт (portal_sdk/events.py): log/error/failed используют `msg`,
+  // item_done — `id` + `summary`. Раньше тут читались несуществующие поля,
+  // и весь поток событий рендерился пустыми строками.
   switch (event.type) {
     case 'started':
       return 'агент запущен';
     case 'item_done':
-      return typeof p.summary === 'string' ? `готово · ${p.summary}` : `готово · ${p.item_id ?? ''}`;
+      return typeof p.summary === 'string' && p.summary
+        ? `готово · ${p.summary}`
+        : `готово · ${p.id ?? ''}`;
     case 'log':
-      return typeof p.message === 'string' ? p.message : JSON.stringify(p);
+      return typeof p.msg === 'string' ? p.msg : JSON.stringify(p);
     case 'result':
       return 'задача завершена успешно';
     case 'failed':
-      return typeof p.message === 'string' ? `сбой · ${p.message}` : 'задача провалилась';
+      return typeof p.msg === 'string' ? `сбой · ${p.msg}` : 'задача провалилась';
     case 'error':
-      return typeof p.message === 'string' ? p.message : 'произошла ошибка';
+      return typeof p.msg === 'string' ? p.msg : 'произошла ошибка';
     default:
       return event.type;
   }
