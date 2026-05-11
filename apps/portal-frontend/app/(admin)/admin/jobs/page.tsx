@@ -3,6 +3,7 @@ import type { Route } from 'next';
 import { apiServer } from '@/lib/api/server';
 import type { JobListItemOut } from '@/lib/api/types';
 import { JobsTable } from '@/components/jobs/JobsTable';
+import { JobsAutoRefresh } from '@/components/jobs/JobsAutoRefresh';
 
 export default async function AdminJobsPage({
   searchParams,
@@ -13,9 +14,11 @@ export default async function AdminJobsPage({
   const query = new URLSearchParams({ limit: '50' });
   if (sp.cursor) query.set('before', sp.cursor);
   const jobs = await apiServer<JobListItemOut[]>(`/api/admin/jobs?${query}`);
+  const hasActiveJobs = jobs.some((j) => j.status === 'queued' || j.status === 'running');
 
   return (
     <div className="mx-auto max-w-[1400px] px-8 py-12">
+      <JobsAutoRefresh hasActiveJobs={hasActiveJobs} />
       <div className="ed-anim-rise mb-10 grid gap-8 md:grid-cols-[2fr_1fr]">
         <div>
           <div className="ed-eyebrow mb-3 text-[color:var(--color-accent)]">
