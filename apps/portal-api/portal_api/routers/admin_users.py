@@ -5,16 +5,19 @@ from __future__ import annotations
 import uuid
 
 import sqlalchemy as sa
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from portal_api.config import Settings, get_settings
 from portal_api.deps import get_db, require_admin
 from portal_api.models import User
 from portal_api.schemas.user import ResetPasswordOut, UserAdminOut, UserAdminUpdate, UserOut
 from portal_api.services import audit_service, user_service
 from portal_api.services.audit_service import A as Action
+from portal_api.services.file_store import LocalDiskFileStore
 
 router = APIRouter(
     prefix="/admin/users", tags=["admin"], dependencies=[Depends(require_admin)]
@@ -124,3 +127,21 @@ async def reset_password(
         user_agent=ua,
     )
     return ResetPasswordOut(temporary_password=new_pwd)
+
+
+@router.get("/{user_id}/avatar")
+async def get_user_avatar(
+    user_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> StreamingResponse:
+    """Стрим аватара любого юзера (admin-only — gate уже на роутере)."""
+    user = await db.get(User, user_id)
+    if user is None or not user.avatar_storage_key:
+        raise HTTPException(status_code=404, detail={"error": {"code": "AVATAR_NOT_FOUND"}})
+    store = LocalDiskFileStore(root=settings.file_store_local_root)
+    return StreamingResponse(
+        store.get(user.avatar_storage_key),
+        media_type=user.avatar_content_type or "application/octet-stream",
+        headers={"Cache-Control": "private, max-age=300"},
+    )

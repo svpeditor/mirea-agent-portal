@@ -38,6 +38,28 @@ export function UsersTable({
   const columns: ColumnDef<UserRow>[] = useMemo(
     () => [
       {
+        id: 'avatar',
+        header: '',
+        cell: (ctx) => {
+          const u = ctx.row.original;
+          const initials = (u.display_name || u.email)[0]?.toUpperCase() ?? '?';
+          return (
+            <div className="flex h-8 w-8 items-center justify-center overflow-hidden border border-[color:var(--color-text-primary)] bg-[color:var(--color-text-primary)] font-mono text-xs font-bold text-[color:var(--color-bg-primary)]">
+              {u.has_avatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={`/api/admin/users/${u.id}/avatar?v=${u.avatar_version ?? ''}`}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                initials
+              )}
+            </div>
+          );
+        },
+      },
+      {
         accessorKey: 'email',
         header: 'Email',
         cell: (ctx) => <span className="font-medium">{ctx.row.original.email}</span>,
