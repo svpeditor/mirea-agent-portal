@@ -27,7 +27,6 @@ export function AgentCard({ agent, no }: Props) {
         {/* Main column */}
         <div>
           <div className="ed-eyebrow mb-2 flex items-center gap-2">
-            {agent.icon && <span>{agent.icon}</span>}
             <span>{agent.tab.name}</span>
             <span className="text-[color:var(--color-text-tertiary)]">·</span>
             <span className="font-mono">v{agent.current_version.manifest_version}</span>
