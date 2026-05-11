@@ -255,7 +255,8 @@ resp = client.chat.completions.create(
 
 - `docs/contract.md` — полный контракт
 - `docs/manifest.schema.json` — JSON Schema для IDE
-- `agents/echo/` — reference-агент в монорепо
-- `agents/proverka_stub/`, `agents/science_agent_stub/` — два примера разных форматов inputs
+- `agents/echo/` — reference-агент в монорепо (минимальный contract example)
+- [svpeditor/mirea-agent-portal-proverka](https://github.com/svpeditor/mirea-agent-portal-proverka) — пример агента с folder-input и LLM (DeepSeek-R1)
+- [svpeditor/mirea-agent-portal-science](https://github.com/svpeditor/mirea-agent-portal-science) — пример агента только с params + LLM
 
 Если нашёл расхождение между этим гидом и реальным поведением — открой issue, гид важнее не привирать.

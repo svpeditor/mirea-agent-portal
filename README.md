@@ -10,10 +10,10 @@
 
 - ✅ План 1.1 — Контракт + Python-SDK + echo-агент (tag `sdk-v0.1.0`)
 - ✅ План 1.2 — Backend API + Job Queue + Docker-runner + LLM-прокси
-- ✅ План 1.3 — Frontend (PR #6 — пока на review)
-- 🟡 План 1.4 — Перенос реальных агентов:
-  - milestone-0: stub-агенты `agents/proverka_stub/` и `agents/science_agent_stub/` опубликованы
-  - milestone-1: real-код — ждёт ОК от куратора НУГ (см. `QUESTIONS_FOR_DANYA.md`)
+- ✅ План 1.3 — Frontend (merged: PR #6)
+- ✅ План 1.4 — Реальные агенты:
+  - [`mirea-agent-portal-proverka`](https://github.com/svpeditor/mirea-agent-portal-proverka) — проверка конкурсных работ через DeepSeek-R1
+  - [`mirea-agent-portal-science`](https://github.com/svpeditor/mirea-agent-portal-science) — поиск научных статей через DeepSeek-R1
 
 Команда «агенты» — пишут агентов:
 - **Гид разработчика**: [`docs/agent-developer-guide.md`](docs/agent-developer-guide.md)
@@ -64,8 +64,43 @@ agents/proverka/          # перенесённый proverka под новый 
 
 ## Конвенция репозиториев
 
-- **Этот репо (моно)** — платформа: portal, SDK, reference-агенты (echo, proverka)
-- **Per-agent репо** — каждый студенческий агент живёт в своём репозитории, добавляется в админку портала через Git URL
+- **Этот репо (моно)** — платформа: portal, SDK, reference-агенты (echo, echo-ts)
+- **Per-agent репо** — каждый продакшен-агент живёт в отдельном репозитории, добавляется в админку портала через Git URL
+
+### Действующие production-агенты
+
+| Агент | Репозиторий | Что делает |
+|---|---|---|
+| **proverka** | [svpeditor/mirea-agent-portal-proverka](https://github.com/svpeditor/mirea-agent-portal-proverka) | Принимает папку PDF/DOCX, разбирает каждую работу через DeepSeek-R1 по чек-листу научной экспертизы, возвращает сводный Word + zip заключений |
+| **science-agent** | [svpeditor/mirea-agent-portal-science](https://github.com/svpeditor/mirea-agent-portal-science) | По теме исследования спрашивает у DeepSeek-R1 список релевантных публикаций, формирует Word-отчёт + BibTeX |
+| **echo** | `agents/echo/` (в моно) | Тестовый агент для smoke-проверки SDK и портала |
+
+### Подключить нового агента к порталу
+
+1. Создать репозиторий с `manifest.yaml` + `agent.py` (контракт SDK см. `docs/contract.md`)
+2. Запушить на GitHub
+3. Под админом — `POST /api/admin/agents`:
+
+   ```bash
+   curl -X POST $PORTAL/api/admin/agents \
+     -H 'Origin: ...' -b /tmp/admin.cookie \
+     -H 'Content-Type: application/json' \
+     -d '{"git_url":"https://github.com/USER/REPO.git","git_ref":"main"}'
+   ```
+4. Дождаться `status=ready` у новой версии: `GET /api/admin/agents/<id>/versions`
+5. `POST /api/admin/agent_versions/<vid>/set_current`
+6. `PATCH /api/admin/agents/<id>` с `{"enabled":true}`
+
+### Сеть агента и ограничения
+
+Контейнер агента стоит в изолированной docker-сети (`portal-agents-net`, `internal: true`) — это **намеренно**. Что это значит:
+
+- ❌ нет доступа в публичный интернет (arXiv API, Semantic Scholar, любые HTTP-запросы наружу)
+- ❌ нельзя «телефонить домой», вытащить секреты из контейнера, скачать payload
+- ✅ доступен только LLM-прокси `portal-api` (через `OPENROUTER_BASE_URL` и ephemeral `OPENROUTER_API_KEY`)
+- ✅ читает `$INPUT_DIR/*` (read-only), пишет в `$OUTPUT_DIR/*`
+
+Поэтому `science-agent` опирается на знания LLM, а не ходит в arXiv напрямую. Если нужен live-поиск, на стороне `portal-api` нужно добавить allowlist-proxy endpoint (например `/api/sandbox/arxiv?q=...`) — это вне scope wave0.
 
 ## Roadmap
 
