@@ -1,0 +1,987 @@
+{
+  "$defs": {
+    "CategoryStrict": {
+      "description": "Вкладки портала. Должно совпадать с tab.slug в БД портала.",
+      "enum": [
+        "научная-работа",
+        "учебная",
+        "организационная"
+      ],
+      "title": "CategoryStrict",
+      "type": "string"
+    },
+    "CheckboxField": {
+      "additionalProperties": false,
+      "properties": {
+        "default": {
+          "default": false,
+          "title": "Default",
+          "type": "boolean"
+        },
+        "help": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Help"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "required": {
+          "default": false,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "type": {
+          "const": "checkbox",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "type"
+      ],
+      "title": "CheckboxField",
+      "type": "object"
+    },
+    "DateField": {
+      "additionalProperties": false,
+      "properties": {
+        "default": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Default"
+        },
+        "help": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Help"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "required": {
+          "default": false,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "type": {
+          "const": "date",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "type"
+      ],
+      "title": "DateField",
+      "type": "object"
+    },
+    "DockerConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "base_image": {
+          "title": "Base Image",
+          "type": "string"
+        },
+        "entrypoint": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Entrypoint",
+          "type": "array"
+        },
+        "setup": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Setup",
+          "type": "array"
+        }
+      },
+      "required": [
+        "base_image",
+        "entrypoint"
+      ],
+      "title": "DockerConfig",
+      "type": "object"
+    },
+    "FolderFile": {
+      "additionalProperties": false,
+      "properties": {
+        "accept": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Accept",
+          "type": "array"
+        },
+        "help": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Help"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "max_total_size_mb": {
+          "default": 100,
+          "title": "Max Total Size Mb",
+          "type": "integer"
+        },
+        "required": {
+          "default": false,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "type": {
+          "const": "folder",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "type"
+      ],
+      "title": "FolderFile",
+      "type": "object"
+    },
+    "LLMConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "models": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Models",
+          "type": "array"
+        },
+        "provider": {
+          "const": "openrouter",
+          "default": "openrouter",
+          "title": "Provider",
+          "type": "string"
+        }
+      },
+      "title": "LLMConfig",
+      "type": "object"
+    },
+    "LimitsConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "max_cpu_cores": {
+          "default": 1.0,
+          "title": "Max Cpu Cores",
+          "type": "number"
+        },
+        "max_memory_mb": {
+          "default": 512,
+          "title": "Max Memory Mb",
+          "type": "integer"
+        },
+        "max_runtime_minutes": {
+          "default": 30,
+          "title": "Max Runtime Minutes",
+          "type": "integer"
+        }
+      },
+      "title": "LimitsConfig",
+      "type": "object"
+    },
+    "MultiFilesField": {
+      "additionalProperties": false,
+      "properties": {
+        "accept": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Accept",
+          "type": "array"
+        },
+        "help": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Help"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "max_files": {
+          "default": 50,
+          "title": "Max Files",
+          "type": "integer"
+        },
+        "max_total_size_mb": {
+          "default": 100,
+          "title": "Max Total Size Mb",
+          "type": "integer"
+        },
+        "required": {
+          "default": false,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "type": {
+          "const": "multi_files",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "type"
+      ],
+      "title": "MultiFilesField",
+      "type": "object"
+    },
+    "NumberField": {
+      "additionalProperties": false,
+      "properties": {
+        "default": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Default"
+        },
+        "help": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Help"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "max": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max"
+        },
+        "min": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min"
+        },
+        "required": {
+          "default": false,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "step": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Step"
+        },
+        "type": {
+          "const": "number",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "type"
+      ],
+      "title": "NumberField",
+      "type": "object"
+    },
+    "OutputField": {
+      "additionalProperties": false,
+      "properties": {
+        "filename": {
+          "title": "Filename",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "primary": {
+          "default": false,
+          "title": "Primary",
+          "type": "boolean"
+        },
+        "type": {
+          "$ref": "#/$defs/OutputType"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "label",
+        "filename"
+      ],
+      "title": "OutputField",
+      "type": "object"
+    },
+    "OutputType": {
+      "enum": [
+        "docx",
+        "pdf",
+        "xlsx",
+        "zip",
+        "html",
+        "json",
+        "any"
+      ],
+      "title": "OutputType",
+      "type": "string"
+    },
+    "RadioField": {
+      "additionalProperties": false,
+      "properties": {
+        "default": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Default"
+        },
+        "help": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Help"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "options": {
+          "items": {
+            "$ref": "#/$defs/SelectOption"
+          },
+          "minItems": 1,
+          "title": "Options",
+          "type": "array"
+        },
+        "required": {
+          "default": false,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "type": {
+          "const": "radio",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "type",
+        "options"
+      ],
+      "title": "RadioField",
+      "type": "object"
+    },
+    "RuntimeConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "docker": {
+          "$ref": "#/$defs/DockerConfig"
+        },
+        "limits": {
+          "$ref": "#/$defs/LimitsConfig"
+        },
+        "llm": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LLMConfig"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "docker"
+      ],
+      "title": "RuntimeConfig",
+      "type": "object"
+    },
+    "SelectField": {
+      "additionalProperties": false,
+      "properties": {
+        "default": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Default"
+        },
+        "help": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Help"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "options": {
+          "items": {
+            "$ref": "#/$defs/SelectOption"
+          },
+          "minItems": 1,
+          "title": "Options",
+          "type": "array"
+        },
+        "required": {
+          "default": false,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "type": {
+          "const": "select",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "type",
+        "options"
+      ],
+      "title": "SelectField",
+      "type": "object"
+    },
+    "SelectOption": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "value",
+        "label"
+      ],
+      "title": "SelectOption",
+      "type": "object"
+    },
+    "SingleFileField": {
+      "additionalProperties": false,
+      "properties": {
+        "accept": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Accept",
+          "type": "array"
+        },
+        "help": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Help"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "max_total_size_mb": {
+          "default": 100,
+          "title": "Max Total Size Mb",
+          "type": "integer"
+        },
+        "required": {
+          "default": false,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "type": {
+          "const": "single_file",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "type"
+      ],
+      "title": "SingleFileField",
+      "type": "object"
+    },
+    "TextField": {
+      "additionalProperties": false,
+      "properties": {
+        "default": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Default"
+        },
+        "help": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Help"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "max_length": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Length"
+        },
+        "min_length": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Length"
+        },
+        "pattern": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pattern"
+        },
+        "placeholder": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Placeholder"
+        },
+        "required": {
+          "default": false,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "type": {
+          "const": "text",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "type"
+      ],
+      "title": "TextField",
+      "type": "object"
+    },
+    "TextareaField": {
+      "additionalProperties": false,
+      "properties": {
+        "default": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Default"
+        },
+        "help": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Help"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "placeholder": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Placeholder"
+        },
+        "required": {
+          "default": false,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "rows": {
+          "default": 4,
+          "title": "Rows",
+          "type": "integer"
+        },
+        "type": {
+          "const": "textarea",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "type"
+      ],
+      "title": "TextareaField",
+      "type": "object"
+    },
+    "ZipFile": {
+      "additionalProperties": false,
+      "properties": {
+        "accept": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Accept",
+          "type": "array"
+        },
+        "help": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Help"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "max_total_size_mb": {
+          "default": 100,
+          "title": "Max Total Size Mb",
+          "type": "integer"
+        },
+        "required": {
+          "default": false,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "type": {
+          "const": "zip",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "type"
+      ],
+      "title": "ZipFile",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Манифест агента платформы AI-агентов МИРЭА. Контракт v0.1 (см. docs/contract.md).",
+  "properties": {
+    "about": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "About"
+    },
+    "category": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CategoryStrict"
+        },
+        {
+          "type": "string"
+        }
+      ],
+      "title": "Category"
+    },
+    "files": {
+      "additionalProperties": {
+        "discriminator": {
+          "mapping": {
+            "folder": "#/$defs/FolderFile",
+            "multi_files": "#/$defs/MultiFilesField",
+            "single_file": "#/$defs/SingleFileField",
+            "zip": "#/$defs/ZipFile"
+          },
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/SingleFileField"
+          },
+          {
+            "$ref": "#/$defs/MultiFilesField"
+          },
+          {
+            "$ref": "#/$defs/FolderFile"
+          },
+          {
+            "$ref": "#/$defs/ZipFile"
+          }
+        ]
+      },
+      "title": "Files",
+      "type": "object"
+    },
+    "icon": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Icon"
+    },
+    "id": {
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "title": "Id",
+      "type": "string"
+    },
+    "inputs": {
+      "additionalProperties": {
+        "discriminator": {
+          "mapping": {
+            "checkbox": "#/$defs/CheckboxField",
+            "date": "#/$defs/DateField",
+            "number": "#/$defs/NumberField",
+            "radio": "#/$defs/RadioField",
+            "select": "#/$defs/SelectField",
+            "text": "#/$defs/TextField",
+            "textarea": "#/$defs/TextareaField"
+          },
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/TextField"
+          },
+          {
+            "$ref": "#/$defs/TextareaField"
+          },
+          {
+            "$ref": "#/$defs/NumberField"
+          },
+          {
+            "$ref": "#/$defs/CheckboxField"
+          },
+          {
+            "$ref": "#/$defs/SelectField"
+          },
+          {
+            "$ref": "#/$defs/RadioField"
+          },
+          {
+            "$ref": "#/$defs/DateField"
+          }
+        ]
+      },
+      "title": "Inputs",
+      "type": "object"
+    },
+    "name": {
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    },
+    "outputs": {
+      "items": {
+        "$ref": "#/$defs/OutputField"
+      },
+      "minItems": 1,
+      "title": "Outputs",
+      "type": "array"
+    },
+    "runtime": {
+      "$ref": "#/$defs/RuntimeConfig"
+    },
+    "short_description": {
+      "minLength": 1,
+      "title": "Short Description",
+      "type": "string"
+    },
+    "version": {
+      "minLength": 1,
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "version",
+    "category",
+    "short_description",
+    "outputs",
+    "runtime"
+  ],
+  "title": "Portal Agent Manifest v0.1",
+  "type": "object"
+}
