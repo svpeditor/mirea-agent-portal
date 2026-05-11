@@ -136,6 +136,45 @@ async def list_for_user(
     return [JobListItemOut.model_validate(row, from_attributes=True) for row in rows]
 
 
+async def list_all_jobs(
+    session: AsyncSession,
+    *,
+    limit: int = 50,
+    before: uuid.UUID | None = None,
+) -> list["JobListItemOut"]:
+    """Admin-only: список всех jobs всех юзеров. Без фильтра по created_by."""
+    stmt = (
+        select(
+            Job.id,
+            Job.status,
+            Job.agent_version_id,
+            Agent.slug.label("agent_slug"),
+            Agent.name.label("agent_name"),
+            Job.cost_usd_total,
+            Job.created_at,
+            Job.started_at,
+            Job.finished_at,
+            Job.error_code,
+        )
+        .join(AgentVersion, AgentVersion.id == Job.agent_version_id)
+        .join(Agent, Agent.id == AgentVersion.agent_id)
+    )
+    if before is not None:
+        before_job = (
+            await session.execute(select(Job).where(Job.id == before))
+        ).scalar_one_or_none()
+        if before_job is not None:
+            stmt = stmt.where(
+                or_(
+                    Job.created_at < before_job.created_at,
+                    and_(Job.created_at == before_job.created_at, Job.id < before_job.id),
+                )
+            )
+    stmt = stmt.order_by(Job.created_at.desc(), Job.id.desc()).limit(limit)
+    rows = (await session.execute(stmt)).all()
+    return [JobListItemOut.model_validate(row, from_attributes=True) for row in rows]
+
+
 async def cancel_job(
     session: AsyncSession, job_id: uuid.UUID, user: User,
 ) -> Job | None:
