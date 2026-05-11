@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import select
@@ -9,7 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from portal_api.config import Settings
 from portal_api.core.security import hash_password
-from portal_api.models import Tab, User
+from portal_api.models import Tab, User, UserQuota
+from portal_api.services.llm_quota import _floor_to_month_start_msk_utc
 
 
 async def bootstrap_admin(db: AsyncSession, settings: Settings) -> None:
@@ -18,6 +20,10 @@ async def bootstrap_admin(db: AsyncSession, settings: Settings) -> None:
     - Если юзеров > 0 — ничего не делает.
     - Если юзеров 0 и ENV заданы — создаёт.
     - Если юзеров 0 и ENV пусты — RuntimeError (нельзя стартовать API).
+
+    Заодно создаёт UserQuota — без неё llm_quota.preflight() падает
+    NoResultFound 500 на первом же вызове LLM (баг с admin-пользователем,
+    т.к. обычные юзеры получают квоту в auth_service.register).
     """
     res = await db.execute(select(User).limit(1))
     if res.scalar_one_or_none() is not None:
@@ -36,6 +42,15 @@ async def bootstrap_admin(db: AsyncSession, settings: Settings) -> None:
         role="admin",
     )
     db.add(admin)
+    await db.flush()
+
+    quota = UserQuota(
+        user_id=admin.id,
+        monthly_limit_usd=Decimal("999999.9999"),
+        per_job_cap_usd=settings.llm_default_per_job_cap_usd,
+        period_starts_at=_floor_to_month_start_msk_utc(datetime.now(UTC)),
+    )
+    db.add(quota)
     await db.commit()
 
 
