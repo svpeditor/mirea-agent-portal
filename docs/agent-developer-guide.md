@@ -230,6 +230,67 @@ resp = client.chat.completions.create(
 
 Стоимость каждого запроса учитывается в квоте пользователя автоматически. Использовать модели вне `runtime.llm.models` нельзя — прокси отдаст ошибку.
 
+## Доступ к внешним сервисам (sandbox)
+
+Контейнер агента стоит в изолированной docker-сети (`portal-agents-net`, `internal: true`). Прямого доступа в публичный интернет нет — нельзя дёрнуть `arxiv.org`, `github.com`, `slack.com` и т.д. Это намеренная безопасность: агент не может вытащить секреты, телефонить домой, скачивать малварь.
+
+Единственный legal egress — **sandbox endpoints на portal-api**, аутентификация по тому же `OPENROUTER_API_KEY` (ephemeral-token).
+
+### Доступные endpoints
+
+#### `GET /api/sandbox/arxiv?search_query=<q>&max_results=<n>`
+
+Прокси к [arXiv API](https://info.arxiv.org/help/api/index.html). Запрос проходит через portal-api в `export.arxiv.org`, ответ парсится в JSON.
+
+**Параметры:**
+- `search_query`: текст запроса. Если нет field-prefix (`ti:`/`au:`/`abs:`), оборачивается в `all:`.
+- `max_results`: 1-100 (default 20).
+
+**Ответ:**
+```json
+{
+  "search_query": "all:transformer",
+  "total": 5,
+  "papers": [
+    {
+      "arxiv_id": "1706.03762v5",
+      "title": "Attention Is All You Need",
+      "abstract": "...",
+      "authors": ["Vaswani A.", "Shazeer N."],
+      "year": 2017,
+      "url": "https://arxiv.org/abs/1706.03762v5",
+      "published": "2017-06-12T17:57:34Z"
+    }
+  ]
+}
+```
+
+**Пример вызова из агента:**
+
+```python
+import os, httpx
+
+base = os.environ["OPENROUTER_BASE_URL"].rstrip("/")
+if base.endswith("/llm/v1"):
+    base = base[: -len("/llm/v1")]  # корень portal-api
+
+r = httpx.get(
+    f"{base}/api/sandbox/arxiv",
+    params={"search_query": "diffusion models", "max_results": 10},
+    headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
+    timeout=60,
+)
+r.raise_for_status()
+papers = r.json()["papers"]
+```
+
+**Errors:**
+- `401` — нет/невалидный bearer
+- `422` — невалидные параметры (пустой query, max_results > 100)
+- `502` — arXiv недоступен или вернул не-200
+
+Если нужен другой источник (Crossref, Semantic Scholar, NASA ADS) — это новая фича на portal-api. Не пытайся достучаться напрямую: упадёт `name resolution`.
+
 ## Чек-лист перед публикацией
 
 - [ ] `portal-sdk-validate-manifest .` проходит
