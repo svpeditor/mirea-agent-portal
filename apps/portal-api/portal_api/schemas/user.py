@@ -18,6 +18,7 @@ class UserOut(BaseModel):
     display_name: str
     role: str
     monthly_budget_usd: Decimal
+    has_avatar: bool = False
     created_at: datetime
 
 

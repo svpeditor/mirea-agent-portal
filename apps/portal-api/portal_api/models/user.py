@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import CheckConstraint, DateTime, Numeric, String, func, text
+from sqlalchemy import CheckConstraint, DateTime, Numeric, String, Text, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -31,6 +31,8 @@ class User(Base):
     monthly_budget_usd: Mapped[Decimal] = mapped_column(
         Numeric(10, 2), nullable=False, server_default=text("5.00")
     )
+    avatar_storage_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    avatar_content_type: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -41,3 +43,7 @@ class User(Base):
     quota: Mapped["UserQuota | None"] = relationship(  # noqa: F821
         back_populates="user", uselist=False, cascade="all, delete-orphan",
     )
+
+    @property
+    def has_avatar(self) -> bool:
+        return self.avatar_storage_key is not None

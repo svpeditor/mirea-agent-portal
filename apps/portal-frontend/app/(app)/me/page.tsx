@@ -5,6 +5,8 @@ import type { UserMeOut, UsagePage } from '@/lib/api/types';
 import { QuotaCard } from '@/components/me/QuotaCard';
 import { UsageHistoryTable } from '@/components/me/UsageHistoryTable';
 import { ChangePasswordDialog } from '@/components/me/ChangePasswordDialog';
+import { AvatarUploader } from '@/components/me/AvatarUploader';
+import { DisplayNameEditor } from '@/components/me/DisplayNameEditor';
 import { cn } from '@/lib/utils';
 
 const TABS = [
@@ -64,14 +66,7 @@ export default async function MePage({
 
         {/* Identity stamp / avatar block */}
         <div className="hidden items-center justify-end lg:flex">
-          <div className="border border-[color:var(--color-text-primary)] bg-[color:var(--color-bg-tertiary)] p-1">
-            <div className="flex h-32 w-32 items-center justify-center bg-[color:var(--color-text-primary)] font-serif text-6xl font-bold text-[color:var(--color-bg-primary)]">
-              {initials}
-            </div>
-            <div className="px-3 py-2">
-              <div className="ed-eyebrow text-center">{me.role.toUpperCase()}</div>
-            </div>
-          </div>
+          <AvatarUploader hasAvatar={me.has_avatar} initials={initials} />
         </div>
       </div>
 
@@ -120,7 +115,7 @@ export default async function MePage({
               </h2>
               <dl className="border-t border-[color:var(--color-text-primary)]">
                 <Row label="Email" value={me.email} mono />
-                <Row label="Имя для портала" value={me.display_name} />
+                <Row label="Имя для портала" value={<DisplayNameEditor current={me.display_name} />} />
                 <Row label="Роль" value={me.role} mono uppercase />
                 <Row
                   label="Зарегистрирован"
@@ -184,7 +179,7 @@ function Row({
   uppercase,
 }: {
   label: string;
-  value: string;
+  value: React.ReactNode;
   mono?: boolean;
   uppercase?: boolean;
 }) {
