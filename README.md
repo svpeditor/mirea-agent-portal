@@ -16,6 +16,7 @@
   - [`mirea-agent-portal-science`](https://github.com/svpeditor/mirea-agent-portal-science) — поиск научных статей через DeepSeek-R1
 
 Команда «агенты» — пишут агентов:
+- **Гид администратора** (без программирования): [`docs/admin-guide.md`](docs/admin-guide.md)
 - **Гид разработчика**: [`docs/agent-developer-guide.md`](docs/agent-developer-guide.md)
 - Контракт: [`docs/contract.md`](docs/contract.md)
 - JSON Schema для IDE: [`docs/manifest.schema.json`](docs/manifest.schema.json)
