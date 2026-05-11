@@ -33,6 +33,7 @@ from portal_api.routers import (
     public_catalog,
     public_tabs,
 )
+from portal_api.routers.admin_audit import router as admin_audit_router
 from portal_api.routers.admin_quota import router as admin_quota_router
 from portal_api.routers.llm_proxy import router as llm_proxy_router
 from portal_api.services.llm_pricing import PricingCache, periodic_refresh
@@ -136,4 +137,5 @@ app.include_router(public_catalog.router, prefix="/api")
 app.include_router(jobs.router, prefix="/api")
 app.include_router(jobs_ws.router, prefix="/api")
 app.include_router(admin_quota_router)
+app.include_router(admin_audit_router, prefix="/api")
 app.include_router(llm_proxy_router)
