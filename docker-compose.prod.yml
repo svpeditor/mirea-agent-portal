@@ -1,13 +1,14 @@
 # Production override для docker-compose. Использовать:
-#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env up -d
 #
 # Что меняется vs dev:
 # - restart: unless-stopped для всех сервисов (auto-recovery)
-# - убраны bind mounts для api/portal-sdk (используется код из image)
-# - убрана публикация postgres-port наружу
-# - frontend NEXT_PUBLIC_WS_URL = wss://<домен> (нужно set'нуть в .env)
+# - postgres-порт не публикуется наружу
+# - api/frontend биндятся на 127.0.0.1 (наружу — через nginx :443)
+# - frontend NEXT_PUBLIC_WS_URL = wss://<домен> (set в .env через PUBLIC_DOMAIN)
 # - COOKIE_SECURE=true (требует TLS)
 # - ENVIRONMENT=prod
+# - file_store — bind mount /var/portal-files (как dev, разделяется с worker)
 services:
   postgres:
     restart: unless-stopped
@@ -27,8 +28,6 @@ services:
       ENVIRONMENT: prod
       COOKIE_SECURE: "true"
       ALLOWED_ORIGINS: '["https://${PUBLIC_DOMAIN}"]'
-    volumes:
-      - portal_files:/var/portal-files
 
   worker:
     restart: unless-stopped
