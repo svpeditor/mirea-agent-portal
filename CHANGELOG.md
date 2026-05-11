@@ -5,7 +5,42 @@
 Формат: [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/), версионирование
 по [SemVer](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — на ветке `plan/1.3-frontend-wave0`
+## [Unreleased]
+
+### Added (план 1.4 — реальные агенты)
+
+- **proverka** в [отдельном репо](https://github.com/svpeditor/mirea-agent-portal-proverka): PDF/DOCX через pdfplumber → DeepSeek-R1 разбирает по чек-листу научной экспертизы → сводный Word + zip заключений.
+- **science-agent** в [отдельном репо](https://github.com/svpeditor/mirea-agent-portal-science) v2.0.0: real arXiv search через `/api/sandbox/arxiv` + LLM ранжирование, fallback на LLM-knowledge режим.
+- Stub-копии `agents/proverka_stub/` и `agents/science_agent_stub/` удалены — реальные репо живут снаружи и подключаются через `POST /api/admin/agents`.
+
+### Added (план 1.5 — sandbox, аватары, профиль)
+
+- **`/api/sandbox/arxiv`** — allowlist-proxy для агентов в публичный интернет. Bearer ephemeral-token auth, Atom-feed arXiv → JSON, Origin middleware exempt.
+- **`/api/me/avatar`** + **`/api/admin/users/{id}/avatar`** — POST upload (PNG/JPEG/WebP, 2 МБ), GET stream, DELETE. Migration 0006 добавляет `users.avatar_storage_key` + `avatar_content_type`.
+- **`UserOut.has_avatar` + `avatar_version`** — короткий cache-buster для img URL.
+- **`AvatarUploader`** на `/me` со stamp-превью + Заменить/Удалить.
+- **`DisplayNameEditor`** — inline pencil-edit для display_name.
+- **Аватары в `/admin/users`** — колонка с stamp в UsersTable.
+- **Аватар в шапке** — `<img>` вместо initial-буквы в UserMenu trigger.
+
+### Fixed (план 1.5)
+
+- `OriginCheckMiddleware` exempt для `/llm/v1` и `/api/sandbox` — агенты в изолированной сети не выставляют Origin, аутентификация bearer-токеном.
+- `bootstrap_admin` создаёт `UserQuota` для админа (без этого первый LLM вызов = 500 NoResultFound).
+- `llm_quota.preflight` lazy-backfill отсутствующей квоты (legacy юзеры из preview-БД).
+- `EventFeed` читал несуществующие SDK-поля (`p.message` вместо `p.msg`), из-за чего log/failed события рендерились как JSON-каша.
+
+### Tests (план 1.5)
+
+- `test_sandbox_arxiv.py` (8): respx-mock на Atom-feed, validation, 401/502 ответы.
+- `test_me_avatar.py` (6): round-trip PNG, content-type rejection, size limit, DELETE flow.
+- `test_bootstrap.py` + `test_llm_quota.py`: coverage admin UserQuota auto-create + lazy backfill.
+- `AvatarUploader.test.tsx` + `DisplayNameEditor.test.tsx` (11): vitest unit.
+- `EventFeed.test.ts` (7): фиксирует SDK→UI контракт (msg/id/summary).
+
+---
+
+## [план 1.3 — merged 2026-05-11, PR #6]
 
 ### Added (frontend)
 
