@@ -37,7 +37,7 @@ export function AdminTable<TData>({
   }
 
   return (
-    <div className="border-t-2 border-[color:var(--color-text-primary)]">
+    <div className="overflow-x-auto border-t-2 border-[color:var(--color-text-primary)]">
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((hg) => (

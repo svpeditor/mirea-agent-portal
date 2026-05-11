@@ -77,7 +77,7 @@ export function Topbar({ user, showAdminLink }: TopbarProps) {
             </div>
           </Link>
 
-          <nav className="flex items-baseline gap-7 text-sm">
+          <nav className="hidden items-baseline gap-7 text-sm md:flex">
             <Link
               href={'/agents' as Route}
               className="group relative text-[color:var(--color-text-primary)] no-underline"
@@ -107,11 +107,11 @@ export function Topbar({ user, showAdminLink }: TopbarProps) {
           </nav>
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3 md:gap-6">
           {quotaStr && (
             <Link
               href={'/me' as Route}
-              className="ed-meta no-underline hover:text-[color:var(--color-accent)]"
+              className="ed-meta hidden no-underline hover:text-[color:var(--color-accent)] sm:inline-flex"
               title="Месячная квота LLM"
             >
               <span className="text-[color:var(--color-text-tertiary)]">квота</span>{' '}
@@ -149,7 +149,38 @@ export function Topbar({ user, showAdminLink }: TopbarProps) {
                 <div className="font-mono text-xs text-[color:var(--color-text-secondary)]">
                   {user.email}
                 </div>
+                {quotaStr && (
+                  <div className="mt-1 font-mono text-xs text-[color:var(--color-text-secondary)] sm:hidden">
+                    квота {quotaStr}
+                  </div>
+                )}
               </div>
+              {/* Mobile-only nav — на md+ скрыто (есть top nav) */}
+              <DropdownMenuItem
+                asChild
+                className="rounded-none px-3 py-2 focus:bg-[color:var(--color-bg-secondary)] md:hidden"
+              >
+                <Link
+                  href={'/agents' as Route}
+                  className="flex cursor-pointer items-center text-sm no-underline"
+                >
+                  <span className="ed-numeral mr-2 w-4 text-center">I.</span>
+                  Каталог агентов
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                asChild
+                className="rounded-none px-3 py-2 focus:bg-[color:var(--color-bg-secondary)] md:hidden"
+              >
+                <Link
+                  href={'/jobs' as Route}
+                  className="flex cursor-pointer items-center text-sm no-underline"
+                >
+                  <span className="ed-numeral mr-2 w-4 text-center">II.</span>
+                  Запуски
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="my-0 bg-[color:var(--color-rule-mute)] md:hidden" />
               <DropdownMenuItem
                 asChild
                 className="rounded-none px-3 py-2 focus:bg-[color:var(--color-bg-secondary)]"
