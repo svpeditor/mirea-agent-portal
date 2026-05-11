@@ -35,6 +35,7 @@ from portal_api.routers import (
     public_tabs,
 )
 from portal_api.routers.admin_audit import router as admin_audit_router
+from portal_api.routers.admin_cron_jobs import router as admin_cron_jobs_router
 from portal_api.routers.admin_jobs import router as admin_jobs_router
 from portal_api.routers.admin_quota import router as admin_quota_router
 from portal_api.routers.llm_proxy import router as llm_proxy_router
@@ -150,3 +151,4 @@ app.include_router(admin_audit_router, prefix="/api")
 app.include_router(admin_jobs_router, prefix="/api")
 app.include_router(llm_proxy_router)
 app.include_router(sandbox_router)
+app.include_router(admin_cron_jobs_router, prefix="/api")
