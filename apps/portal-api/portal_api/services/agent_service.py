@@ -15,7 +15,9 @@ import subprocess
 import tempfile
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
 from pathlib import Path
+from types import EllipsisType
 from typing import Any
 
 import yaml
@@ -251,16 +253,19 @@ async def update_agent(
     *,
     tab_id: uuid.UUID | None = None,
     enabled: bool | None = None,
+    cost_cap_usd: "Decimal | None | EllipsisType" = ...,
 ) -> Agent:
-    """Изменить tab_id и/или enabled у агента.
+    """Изменить tab_id, enabled и/или cost_cap_usd у агента.
 
-    Toggle `enabled=True` допустим только если у агента есть `current_version_id`
-    (т.е. есть готовая версия и она помечена как current). Иначе 409
-    NoReadyVersionError.
+    cost_cap_usd:
+        - Ellipsis (default) — поле не меняется.
+        - None — кэп снимается (null в БД).
+        - Decimal — устанавливается.
+
+    Toggle `enabled=True` допустим только если у агента есть `current_version_id`.
     """
     agent = await get_agent(session, agent_id)
     if tab_id is not None:
-        # Проверим, что вкладка существует — иначе FK выпадет на flush
         tab = await session.get(Tab, tab_id)
         if tab is None:
             raise TabNotFoundError()
@@ -269,6 +274,8 @@ async def update_agent(
         if enabled and agent.current_version_id is None:
             raise NoReadyVersionError()
         agent.enabled = enabled
+    if cost_cap_usd is not ...:
+        agent.cost_cap_usd = cost_cap_usd
     agent.updated_at = datetime.now(UTC)
     await session.flush()
     return agent

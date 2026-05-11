@@ -17,10 +17,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from portal_api.config import get_settings
 from portal_api.core.exceptions import (
+    AgentCostCapExceededError,
     PerJobCapExceededError,
     QuotaExhaustedError,
 )
-from portal_api.models import Job, User, UserQuota
+from portal_api.models import Agent, AgentVersion, Job, User, UserQuota
 
 MSK_OFFSET = timedelta(hours=3)
 
@@ -97,6 +98,22 @@ async def preflight(
             f"per-job cap ${quota.per_job_cap_usd} exceeded "
             f"(used ${job.cost_usd_total}, requested ~${estimated_cost})"
         )
+
+    # Per-agent cap (опциональный, заполняется админом в /admin/agents).
+    agent_cost_cap = (
+        await db.execute(
+            sa.select(Agent.cost_cap_usd)
+            .join(AgentVersion, AgentVersion.agent_id == Agent.id)
+            .where(AgentVersion.id == job.agent_version_id)
+        )
+    ).scalar_one_or_none()
+    if agent_cost_cap is not None:
+        remaining_agent = agent_cost_cap - job.cost_usd_total
+        if estimated_cost > remaining_agent:
+            raise AgentCostCapExceededError(
+                f"agent cost cap ${agent_cost_cap} exceeded "
+                f"(used ${job.cost_usd_total}, requested ~${estimated_cost})"
+            )
 
 
 async def postflight(

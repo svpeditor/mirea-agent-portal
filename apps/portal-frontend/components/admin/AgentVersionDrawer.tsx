@@ -29,11 +29,14 @@ interface Props {
   agentSlug: string;
   gitUrl: string;
   enabled: boolean;
+  costCapUsd: string | null;
 }
 
-export function AgentVersionDrawer({ agentId, agentName, agentSlug, gitUrl, enabled }: Props) {
+export function AgentVersionDrawer({ agentId, agentName, agentSlug, gitUrl, enabled, costCapUsd }: Props) {
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
+  const [capInput, setCapInput] = useState(costCapUsd ?? '');
+  const [savingCap, setSavingCap] = useState(false);
 
   const { data: versions, refetch } = useQuery({
     queryKey: ['agent-versions', agentId],
@@ -57,6 +60,24 @@ export function AgentVersionDrawer({ agentId, agentName, agentSlug, gitUrl, enab
     }
   }
 
+  async function saveCap() {
+    setSavingCap(true);
+    try {
+      const trimmed = capInput.trim();
+      const value = trimmed === '' ? null : trimmed;
+      await apiClient(`/api/admin/agents/${agentId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ cost_cap_usd: value }),
+      });
+      toast.success(value === null ? 'Лимит снят' : `Лимит установлен: $${value}`);
+      router.refresh();
+    } catch (err) {
+      toast.error(mapApiError(err));
+    } finally {
+      setSavingCap(false);
+    }
+  }
+
   return (
     <DrawerSheet paramName="drawer" paramValue={agentId} title={agentName}>
       <div className="space-y-6">
@@ -75,6 +96,24 @@ export function AgentVersionDrawer({ agentId, agentName, agentSlug, gitUrl, enab
             <Button variant="ghost" size="sm" onClick={toggleEnabled} className="ml-2">
               {enabled ? 'Отключить' : 'Включить'}
             </Button>
+          </div>
+          <div className="flex items-baseline gap-2 pt-2">
+            <span className="text-[color:var(--color-text-secondary)]">лимит, $:</span>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={capInput}
+              onChange={(e) => setCapInput(e.target.value)}
+              placeholder="без лимита"
+              className="w-28 border border-[color:var(--color-text-primary)] bg-[color:var(--color-bg-primary)] px-2 py-1 font-mono text-sm"
+            />
+            <Button size="sm" variant="ghost" onClick={saveCap} disabled={savingCap || capInput === (costCapUsd ?? '')}>
+              Сохранить
+            </Button>
+          </div>
+          <div className="text-xs text-[color:var(--color-text-tertiary)]">
+            опциональный потолок на стоимость одного запуска этого агента, дополняет per-job квоту юзера
           </div>
         </div>
 

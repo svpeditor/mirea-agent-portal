@@ -3,8 +3,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from portal_api.models.base import Base
@@ -26,6 +27,9 @@ class Agent(Base):
     )
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     git_url: Mapped[str] = mapped_column(Text, nullable=False)
+    cost_cap_usd: Mapped[Decimal | None] = mapped_column(
+        Numeric(10, 4), nullable=True
+    )
     created_by_user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )

@@ -339,6 +339,13 @@ class PerJobCapExceededError(AppError):
         super().__init__(code="per_job_cap_exceeded", message=message, status_code=402)
 
 
+class AgentCostCapExceededError(AppError):
+    """На этом job исчерпан per-agent cost_cap_usd (опциональный лимит)."""
+
+    def __init__(self, message: str = "Превышен лимит стоимости на запуск этого агента.") -> None:
+        super().__init__(code="agent_cost_cap_exceeded", message=message, status_code=402)
+
+
 class ModelNotInWhitelistError(AppError):
     """Модель из request.body не разрешена manifest агента."""
 
