@@ -183,7 +183,7 @@ export default async function LandingPage() {
             <Link
               key={article.slug}
               href={`/agents/${article.slug}` as Route}
-              className="group ed-anim-rise grid grid-cols-1 items-start gap-4 border-b border-[color:var(--color-text-primary)] py-10 no-underline transition-colors hover:bg-[color:var(--color-bg-tertiary)] md:grid-cols-[140px_1fr_240px] md:gap-12"
+              className="group ed-anim-rise grid grid-cols-1 items-start gap-4 border-b border-[color:var(--color-text-primary)] py-10 no-underline transition-colors hover:bg-[color:var(--color-bg-tertiary)] md:grid-cols-[140px_1fr] md:gap-12"
               style={{ animationDelay: `${0.15 + i * 0.08}s` }}
             >
               {/* Number column */}
@@ -210,12 +210,6 @@ export default async function LandingPage() {
                 </div>
               </div>
 
-              {/* Decorative icon column */}
-              <div className="hidden items-center justify-center md:flex">
-                <div className="flex h-32 w-32 items-center justify-center border border-[color:var(--color-text-primary)] bg-[color:var(--color-bg-tertiary)] text-4xl transition-all group-hover:bg-[color:var(--color-accent)] group-hover:border-[color:var(--color-accent)] group-hover:text-[color:var(--color-bg-primary)]">
-                  {article.icon ?? '§'}
-                </div>
-              </div>
             </Link>
           ))}
         </div>
