@@ -3,6 +3,7 @@ import type { Route } from 'next';
 import { apiServer } from '@/lib/api/server';
 import type { JobListItemOut } from '@/lib/api/types';
 import { JobsTable } from '@/components/jobs/JobsTable';
+import { JobsAutoRefresh } from '@/components/jobs/JobsAutoRefresh';
 import { Send } from 'lucide-react';
 
 export default async function JobsPage({
@@ -18,9 +19,11 @@ export default async function JobsPage({
   const jobs = await apiServer<JobListItemOut[]>(
     `/api/jobs${query.size ? '?' + query.toString() : ''}`,
   );
+  const hasActiveJobs = jobs.some((j) => j.status === 'queued' || j.status === 'running');
 
   return (
     <div className="mx-auto max-w-[1400px] px-8 py-12">
+      <JobsAutoRefresh hasActiveJobs={hasActiveJobs} />
       {/* Header */}
       <div className="ed-anim-rise mb-12 grid gap-8 md:grid-cols-[2fr_1fr]">
         <div>
