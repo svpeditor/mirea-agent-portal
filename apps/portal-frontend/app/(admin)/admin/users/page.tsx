@@ -24,7 +24,19 @@ export default async function AdminUsersPage({
   searchParams: Promise<{ drawer?: string }>;
 }) {
   const { drawer } = await searchParams;
-  const list = await apiServer<UsersListOut>('/api/admin/users');
+  const [list, usage] = await Promise.all([
+    apiServer<UsersListOut>('/api/admin/users'),
+    apiServer<{
+      by_user: Array<{ user_id: string; email: string; cost_usd: string; requests: number }>;
+    }>('/api/admin/usage').catch(() => ({ by_user: [] })),
+  ]);
+
+  const costByUserId: Record<string, string> = {};
+  const requestsByUserId: Record<string, number> = {};
+  for (const row of usage.by_user) {
+    costByUserId[row.user_id] = row.cost_usd;
+    requestsByUserId[row.user_id] = row.requests;
+  }
 
   let selectedUser: UserAdminOut | null = null;
   if (drawer) {
@@ -63,7 +75,11 @@ export default async function AdminUsersPage({
       </div>
 
       <div className="ed-anim-rise ed-d-2">
-        <UsersTable users={list.users} />
+        <UsersTable
+          users={list.users}
+          costByUserId={costByUserId}
+          requestsByUserId={requestsByUserId}
+        />
       </div>
 
       <UserDrawer user={selectedUser} />
