@@ -19,5 +19,7 @@ def test_enqueue_pushes_to_jobs_queue(redis_url: str, reset_redis) -> None:
     assert q.count == 1
     job = q.jobs[0]
     assert job.func_name == "portal_worker.tasks.run_job.run_job"
-    assert job.args == (str(job_id),)
+    # RQ 2.x payload — args=[{"job_id": ..., ephemeral_token?}]. См. comment в
+    # services/job_enqueue.py:enqueue_run.
+    assert job.args == [{"job_id": str(job_id)}]
     assert job.timeout == 120

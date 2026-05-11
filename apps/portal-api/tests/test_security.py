@@ -21,12 +21,15 @@ async def test_cookies_have_security_attributes(
     access_cookie = next(c for c in set_cookies if c.startswith("access_token="))
     refresh_cookie = next(c for c in set_cookies if c.startswith("refresh_token="))
 
+    # samesite=lax (а не strict) — нужен для cross-port WebSocket handshake.
+    # path=/ (а не /api) — frontend rewrite на корне.
+    # См. fixes 6b12d39 (WS cross-port) и b466452 (cookie path /api → /).
     assert "HttpOnly" in access_cookie
-    assert "samesite=strict" in access_cookie.lower().replace(" ", "")
-    assert "Path=/api" in access_cookie
+    assert "samesite=lax" in access_cookie.lower().replace(" ", "")
+    assert "Path=/" in access_cookie
 
     assert "HttpOnly" in refresh_cookie
-    assert "Path=/api" in refresh_cookie
+    assert "Path=/" in refresh_cookie
 
 
 @pytest.mark.asyncio
