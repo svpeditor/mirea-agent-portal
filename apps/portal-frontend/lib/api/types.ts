@@ -1,5 +1,10 @@
-// Auto-gen из openapi.json. До регенерации — минимальный набор.
-// Запусти `npm run codegen` после первого запуска backend.
+// Hand-written: плоские named-exports для consumers. Синхронизируется с
+// openapi.json вручную; полный сгенерённый schema лежит в `openapi-schema.ts`
+// как референс (запусти `npm run codegen` чтобы его обновить).
+//
+// Когда добавляешь новый endpoint:
+// 1. Запусти `npm run codegen` — обновит openapi-schema.ts.
+// 2. Сверь свежие типы там и добавь ручной export тут.
 
 export interface UserOut {
   id: string;
