@@ -1,5 +1,5 @@
 .PHONY: help install install-api install-worker install-sdk \
-        test test-api test-worker test-sdk test-agents \
+        test test-api test-worker test-sdk \
         lint lint-api lint-worker lint-sdk \
         fmt schema clean compose-up compose-down
 
@@ -36,7 +36,10 @@ install-worker:
 
 # --- Тесты ---
 
-test: test-sdk test-api test-worker test-agents
+# Реальные агенты proverka/science живут в отдельных репозиториях
+# (svpeditor/mirea-agent-portal-{proverka,science}) — там свой CI.
+# В монорепо остаются только echo и echo-ts для smoke-проверок SDK.
+test: test-sdk test-api test-worker
 
 test-sdk:
 	cd packages/portal-sdk-python && ../../$(VENV)/bin/pytest
@@ -46,9 +49,6 @@ test-api:
 
 test-worker:
 	cd apps/portal-worker && ../../$(VENV)/bin/pytest
-
-test-agents:
-	$(VENV)/bin/pytest agents/proverka_stub/tests agents/science_agent_stub/tests
 
 # --- Линт ---
 

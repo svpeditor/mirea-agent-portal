@@ -75,20 +75,3 @@ jobs:
       - name: pytest portal-worker
         working-directory: apps/portal-worker
         run: ../../.venv/bin/pytest
-
-  agents:
-    name: Stub-агенты — manifest validation
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install SDK
-        run: |
-          python -m venv .venv
-          .venv/bin/pip install --upgrade pip
-          .venv/bin/pip install -e packages/portal-sdk-python pytest
-      - name: pytest agents/
-        run: |
-          .venv/bin/pytest agents/proverka_stub/tests agents/science_agent_stub/tests
