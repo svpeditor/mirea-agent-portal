@@ -69,6 +69,17 @@ class Settings(BaseSettings):
     sentry_traces_sample_rate: float = 0.0
     sentry_release: str | None = None
 
+    # Email-уведомления о завершении job (опционально).
+    # Если SMTP_HOST не задан — отправка обходится через stdout-логирование (no-op для тестов).
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    smtp_from: str = "noreply@mirea.ru"
+    portal_public_base_url: str = "http://localhost:3000"
+    # job > этого времени — отправляем email, более короткие пропускаем
+    email_min_job_duration_seconds: int = 30
+
 
 @lru_cache
 def get_settings() -> Settings:

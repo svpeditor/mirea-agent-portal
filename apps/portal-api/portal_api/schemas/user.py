@@ -20,6 +20,7 @@ class UserOut(BaseModel):
     monthly_budget_usd: Decimal
     has_avatar: bool = False
     avatar_version: str | None = None
+    notify_on_job_finish: bool = False
     created_at: datetime
 
 
@@ -31,6 +32,7 @@ class UserAdminOut(UserOut):
 
 class UserUpdate(BaseModel):
     display_name: str | None = Field(default=None, min_length=1, max_length=200)
+    notify_on_job_finish: bool | None = Field(default=None)
 
 
 class UserAdminUpdate(BaseModel):

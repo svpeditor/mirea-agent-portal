@@ -50,6 +50,11 @@ async def patch_me(
 ) -> User:
     if payload.display_name is not None:
         await user_service.update_display_name(db, user, payload.display_name)
+    if payload.notify_on_job_finish is not None:
+        user.notify_on_job_finish = payload.notify_on_job_finish
+        await db.flush()
+    await db.commit()
+    await db.refresh(user)
     return user
 
 

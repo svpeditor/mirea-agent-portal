@@ -7,6 +7,7 @@ import { UsageHistoryTable } from '@/components/me/UsageHistoryTable';
 import { ChangePasswordDialog } from '@/components/me/ChangePasswordDialog';
 import { AvatarUploader } from '@/components/me/AvatarUploader';
 import { DisplayNameEditor } from '@/components/me/DisplayNameEditor';
+import { NotifyToggle } from '@/components/me/NotifyToggle';
 import { cn } from '@/lib/utils';
 
 const TABS = [
@@ -132,14 +133,17 @@ export default async function MePage({
               <h2 className="ed-section mb-6 text-3xl">
                 Доступ
               </h2>
-              <div className="border border-[color:var(--color-text-primary)] bg-[color:var(--color-bg-tertiary)] p-6">
-                <p className="font-serif text-base leading-relaxed text-[color:var(--color-text-secondary)]">
-                  Авторизация по&nbsp;cookie с&nbsp;HttpOnly-флагом и&nbsp;строгой
-                  same-site политикой. Сессия обновляется автоматически.
-                </p>
-                <div className="mt-6">
-                  <ChangePasswordDialog />
+              <div className="space-y-4">
+                <div className="border border-[color:var(--color-text-primary)] bg-[color:var(--color-bg-tertiary)] p-6">
+                  <p className="font-serif text-base leading-relaxed text-[color:var(--color-text-secondary)]">
+                    Авторизация по&nbsp;cookie с&nbsp;HttpOnly-флагом и&nbsp;строгой
+                    same-site политикой. Сессия обновляется автоматически.
+                  </p>
+                  <div className="mt-6">
+                    <ChangePasswordDialog />
+                  </div>
                 </div>
+                <NotifyToggle initial={me.notify_on_job_finish} />
               </div>
             </div>
           </div>
