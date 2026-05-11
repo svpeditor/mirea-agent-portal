@@ -47,3 +47,11 @@ class User(Base):
     @property
     def has_avatar(self) -> bool:
         return self.avatar_storage_key is not None
+
+    @property
+    def avatar_version(self) -> str | None:
+        """Короткий ID для cache-busting в URL аватара. None если аватара нет."""
+        if not self.avatar_storage_key:
+            return None
+        # последние 8 hex-символов uuid из ключа avatars/<uid>/<uuid>
+        return self.avatar_storage_key.rsplit("/", 1)[-1][:8]

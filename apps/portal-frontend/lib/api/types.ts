@@ -8,6 +8,7 @@ export interface UserOut {
   role: 'user' | 'admin';
   monthly_budget_usd: string;  // Decimal as string
   has_avatar: boolean;
+  avatar_version: string | null;
   created_at: string;
 }
 

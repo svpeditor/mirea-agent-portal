@@ -123,9 +123,18 @@ export function Topbar({ user, showAdminLink }: TopbarProps) {
             <DropdownMenuTrigger asChild>
               <button
                 aria-label="Меню пользователя"
-                className="flex h-10 w-10 items-center justify-center border border-[color:var(--color-text-primary)] bg-[color:var(--color-text-primary)] font-mono text-xs font-bold text-[color:var(--color-bg-primary)] transition-colors hover:bg-[color:var(--color-accent)] hover:border-[color:var(--color-accent)]"
+                className="flex h-10 w-10 items-center justify-center overflow-hidden border border-[color:var(--color-text-primary)] bg-[color:var(--color-text-primary)] font-mono text-xs font-bold text-[color:var(--color-bg-primary)] transition-colors hover:bg-[color:var(--color-accent)] hover:border-[color:var(--color-accent)]"
               >
-                {initials}
+                {user.has_avatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={`/api/me/avatar?v=${user.avatar_version ?? ''}`}
+                    alt="Аватар"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  initials
+                )}
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
