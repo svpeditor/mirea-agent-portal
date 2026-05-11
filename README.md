@@ -10,47 +10,82 @@
 
 - ✅ План 1.1 — Контракт + Python-SDK + echo-агент (tag `sdk-v0.1.0`)
 - ✅ План 1.2 — Backend API + Job Queue + Docker-runner + LLM-прокси
-- ✅ План 1.3 — Frontend (merged: PR #6)
-- ✅ План 1.4 — Реальные агенты:
-  - [`mirea-agent-portal-proverka`](https://github.com/svpeditor/mirea-agent-portal-proverka) — проверка конкурсных работ через DeepSeek-R1
-  - [`mirea-agent-portal-science`](https://github.com/svpeditor/mirea-agent-portal-science) — поиск научных статей через DeepSeek-R1
+- ✅ План 1.3 — Frontend (PR #6)
+- ✅ План 1.4 — Реальные агенты (4 production-агента, см. ниже)
+- ✅ План 1.5 — Sandbox-прокси (arXiv/Crossref/S2), аватары, профиль, mobile responsive
+- ✅ План 1.6 — Per-agent quotas, email-уведомления, cron-расписания
+- ✅ План 1.7 — UI-конструктор агента (Мастер + ZIP-upload), без CLI
 
-Команда «агенты» — пишут агентов:
-- **Гид администратора** (без программирования): [`docs/admin-guide.md`](docs/admin-guide.md)
-- **Гид разработчика**: [`docs/agent-developer-guide.md`](docs/agent-developer-guide.md)
-- Контракт: [`docs/contract.md`](docs/contract.md)
-- JSON Schema для IDE: [`docs/manifest.schema.json`](docs/manifest.schema.json)
-- Установить Python SDK: `pip install -e ./packages/portal-sdk-python`
-- Или TypeScript SDK: `npm install ./packages/portal-sdk-ts`
-- Скопировать `agents/echo/` как шаблон
-- Проверить манифест: `portal-sdk-validate-manifest .`
-- Запустить локально: `portal-sdk-run-local <agent_dir>`
+## Гиды
 
-Деплой: [`docs/deploy-guide.md`](docs/deploy-guide.md).
+- 👨‍🏫 **Гид администратора** (без программирования): [`docs/admin-guide.md`](docs/admin-guide.md) — 3 способа добавить агента через UI со скриншотами.
+- 👨‍💻 **Гид разработчика**: [`docs/agent-developer-guide.md`](docs/agent-developer-guide.md) — как писать своих агентов под контракт SDK.
+- 📐 **Контракт**: [`docs/contract.md`](docs/contract.md) + [`docs/manifest.schema.json`](docs/manifest.schema.json).
+- 🚀 **Деплой**: [`docs/deploy-guide.md`](docs/deploy-guide.md).
 
-## Что есть в репо
+## Действующие production-агенты
 
-```
-docs/superpowers/specs/   # design-доки по спекам
-  2026-04-30-agent-platform-foundation-design.md   ← Спек 1, текущий
-docs/superpowers/mockups/ # HTML-макеты UI с брейнштормa
-```
+| Агент | Репозиторий | Что делает |
+|---|---|---|
+| **proverka** | [svpeditor/mirea-agent-portal-proverka](https://github.com/svpeditor/mirea-agent-portal-proverka) | Принимает папку PDF/DOCX школьных работ → DeepSeek-R1 разбирает по чек-листу научной экспертизы → сводный Word + zip per-work заключений. |
+| **science-agent** | [svpeditor/mirea-agent-portal-science](https://github.com/svpeditor/mirea-agent-portal-science) | По теме ищет статьи в arXiv (через sandbox-прокси), enrichment через Crossref+Semantic Scholar (citations, DOI), DeepSeek-R1 ранжирует + аннотации ~5 предложений + обоснование балла. Сортировка по релевантности или цитированиям. Прямая ссылка на PDF. |
+| **article-analyzer** | [svpeditor/mirea-agent-portal-article-analyzer](https://github.com/svpeditor/mirea-agent-portal-article-analyzer) | Папка PDF/DOCX готовых статей + научная тема → разбор каждой (метаданные APA+ГОСТ, проблема/методология/результаты, 3-5 ключевых цитат с переводом, score 0-10 + обоснование, обобщение top-статей). |
+| **translator** | [svpeditor/mirea-agent-portal-translator](https://github.com/svpeditor/mirea-agent-portal-translator) | DOCX/текст научной работы → перевод на ru/en/zh через DeepSeek-R1 с сохранением структуры и опциональным глоссарием. |
+| **echo** | `agents/echo/` (в моно) | Reference-агент для smoke-проверки SDK. |
 
-Когда стартует имплементация — здесь появятся:
+## Как добавить нового агента
 
-```
-apps/portal-frontend/     # Next.js + TS + Tailwind + shadcn/ui
-apps/portal-api/          # FastAPI + Pydantic + SQLAlchemy async
-apps/portal-worker/       # RQ + Docker SDK
-packages/portal-sdk-python/  # SDK для писателей агентов
-agents/echo/              # reference-имплементация агента
-agents/proverka/          # перенесённый proverka под новый контракт
-```
+Три способа через **`/admin/agents` → + Создать агент**:
 
-## Команды
+### 1. Мастер (для не-разработчиков)
+Визуальная форма: slug + name + категория + inputs/outputs → портал генерит boilerplate (`manifest.yaml` + `agent.py` + `Dockerfile`) → собирает образ. Логику дописываете отдельно.
 
-- **Команда «Портал»** — frontend, API, worker, SDK, админка, OpenRouter-прокси, auth, квоты, деплой
-- **Команда «Агенты»** — echo (reference), перенос proverka, в Спеке 2 — science_agent, в Спеке 3 — поиск научных статей
+### 2. ZIP-архив (готовый код, без GitHub)
+Drag-drop `.zip` с `manifest.yaml` + кодом. Лимит 50 МБ. Защита от zip-slip, auto-flatten одной top-папки.
+
+### 3. Git URL (для опытных)
+`https://github.com/...` + git_ref. Удобно для итеративной разработки.
+
+После создания → дождаться `status=ready` → «Сделать текущей» → «Включить». Подробно со скриншотами — [`docs/admin-guide.md`](docs/admin-guide.md).
+
+## Sandbox endpoints (egress для агентов)
+
+Контейнеры агентов изолированы в `portal-agents-net` (`internal: true`) — нет прямого доступа в интернет. Доступны только sandbox-endpoints на `portal-api`:
+
+| Endpoint | Источник | Описание |
+|---|---|---|
+| `GET /api/sandbox/arxiv?search_query=...` | arXiv API | Реальный поиск статей, Atom-feed парсится в JSON |
+| `GET /api/sandbox/crossref?query=...` | Crossref Works API | DOI + citation counts + journal venue |
+| `GET /api/sandbox/semantic-scholar?query=...` | Semantic Scholar | Abstracts + citation counts + DOI |
+| `POST /llm/v1/chat/completions` | OpenRouter (через прокси) | LLM-вызовы, ephemeral-токен, квоты per-user/per-agent |
+
+Auth: bearer ephemeral-токен (инжектится порталом). Origin middleware exempt. Spec для писателей агентов — [`docs/agent-developer-guide.md`](docs/agent-developer-guide.md).
+
+## Возможности портала
+
+### Для пользователей
+- Каталог агентов по категориям (научная / учебная / организационная)
+- Запуск через браузерную форму, прогресс в реальном времени по WebSocket
+- Скачивание артефактов (Word/PDF/JSON/ZIP)
+- История запусков с пагинацией и фильтрами
+- Личный кабинет: аватар, имя, email-уведомления о завершении job
+- Mobile responsive (топбар → dropdown, таблицы скроллятся)
+
+### Для администраторов
+- Управление вкладками каталога (`/admin/tabs`)
+- Регистрация агентов: Мастер / ZIP / Git URL (`/admin/agents`)
+- Версионирование агентов (можно откатиться)
+- Per-user квоты (месячный лимит, per-job cap) + per-agent cost cap
+- Аватары других юзеров в `/admin/users`
+- Cron-расписания (hourly/daily/weekly/monthly) для авто-запусков (`/admin/crons`)
+- LLM-usage агрегаты (`/admin/usage`), audit log (`/admin/audit`)
+- System dashboard ping postgres+redis (`/admin/system`)
+
+### Для разработчиков агентов
+- SDK на Python (`portal-sdk-python`) и TypeScript (`portal-sdk-ts`)
+- Language-agnostic контракт (yaml + NDJSON stdout)
+- `portal-sdk-validate-manifest` + `portal-sdk-run-local` CLI
+- 70+ юнит-тестов backend + frontend
 
 ## Tech-stack
 
@@ -58,71 +93,55 @@ agents/proverka/          # перенесённый proverka под новый 
 - **Backend** FastAPI + Pydantic v2 + SQLAlchemy 2.0 async + Postgres 16
 - **Очередь** RQ + Redis
 - **Sandbox** Docker per job (через Docker SDK для Python)
-- **LLM-gateway** OpenRouter через прокси портала
-- **Деплой** Docker Compose, на старте — Mac Mini M4
+- **LLM-gateway** OpenRouter через прокси портала, ephemeral-токены
+- **Cron** Worker daemon-thread, SELECT FOR UPDATE SKIP LOCKED
+- **Email** SMTP, graceful no-op без `SMTP_HOST`
+- **Деплой** Docker Compose, demo на Mac Mini M4
 
-Подробности и обоснования — в спеке.
+## Структура репо
 
-## Конвенция репозиториев
+```
+apps/portal-frontend/         Next.js 15 + TypeScript
+apps/portal-api/              FastAPI + SQLAlchemy async
+  alembic/versions/           Миграции 0001..0009
+apps/portal-worker/           RQ worker + cron scheduler + builder
+packages/portal-sdk-python/   SDK + manifest schema
+packages/portal-sdk-ts/       1:1 TS-эквивалент
+agents/echo/                  Reference Python агент
+agents/echo-ts/               Reference TS агент
+docs/
+  admin-guide.md              Для администратора кафедры
+  agent-developer-guide.md    Для писателей агентов
+  contract.md                 Спецификация контракта
+  manifest.schema.json        JSON Schema для IDE
+  deploy-guide.md             Production-деплой
+  screenshots/                К admin-guide
+```
 
-- **Этот репо (моно)** — платформа: portal, SDK, reference-агенты (echo, echo-ts)
-- **Per-agent репо** — каждый продакшен-агент живёт в отдельном репозитории, добавляется в админку портала через Git URL
+## Запуск локально
 
-### Действующие production-агенты
+```bash
+# Backend + worker + frontend + postgres + redis
+docker compose up -d
 
-| Агент | Репозиторий | Что делает |
-|---|---|---|
-| **proverka** | [svpeditor/mirea-agent-portal-proverka](https://github.com/svpeditor/mirea-agent-portal-proverka) | Принимает папку PDF/DOCX, разбирает каждую работу через DeepSeek-R1 по чек-листу научной экспертизы, возвращает сводный Word + zip заключений |
-| **science-agent** | [svpeditor/mirea-agent-portal-science](https://github.com/svpeditor/mirea-agent-portal-science) | По теме исследования спрашивает у DeepSeek-R1 список релевантных публикаций, формирует Word-отчёт + BibTeX |
-| **echo** | `agents/echo/` (в моно) | Тестовый агент для smoke-проверки SDK и портала |
+# Открыть
+open http://localhost:3000
 
-### Подключить нового агента к порталу
+# Логи
+docker compose logs -f api worker
+```
 
-1. Создать репозиторий с `manifest.yaml` + `agent.py` (контракт SDK см. `docs/contract.md`)
-2. Запушить на GitHub
-3. Под админом — `POST /api/admin/agents`:
-
-   ```bash
-   curl -X POST $PORTAL/api/admin/agents \
-     -H 'Origin: ...' -b /tmp/admin.cookie \
-     -H 'Content-Type: application/json' \
-     -d '{"git_url":"https://github.com/USER/REPO.git","git_ref":"main"}'
-   ```
-4. Дождаться `status=ready` у новой версии: `GET /api/admin/agents/<id>/versions`
-5. `POST /api/admin/agent_versions/<vid>/set_current`
-6. `PATCH /api/admin/agents/<id>` с `{"enabled":true}`
-
-### Сеть агента и ограничения
-
-Контейнер агента стоит в изолированной docker-сети (`portal-agents-net`, `internal: true`) — это **намеренно**. Что это значит:
-
-- ❌ нет доступа в публичный интернет (arXiv API, Semantic Scholar, любые HTTP-запросы наружу)
-- ❌ нельзя «телефонить домой», вытащить секреты из контейнера, скачать payload
-- ✅ доступен только LLM-прокси `portal-api` (через `OPENROUTER_BASE_URL` и ephemeral `OPENROUTER_API_KEY`)
-- ✅ читает `$INPUT_DIR/*` (read-only), пишет в `$OUTPUT_DIR/*`
-
-Поэтому `science-agent` опирается на знания LLM, а не ходит в arXiv напрямую. Если нужен live-поиск, на стороне `portal-api` нужно добавить allowlist-proxy endpoint (например `/api/sandbox/arxiv?q=...`) — это вне scope wave0.
+Демо: `http://100.106.180.108:3000/` (через tailscale).
 
 ## Roadmap
 
-| Спек | Содержимое | Команда |
+| Спек | Статус | Что |
 |---|---|---|
-| **1. Фундамент** | Контракт агента + портал-MVP + перенос proverka | Портал + Агенты |
-| 2. science_agent | Перенос второго существующего агента + полировка контракта | Агенты |
-| 3. Поиск статей | Новый агент: arXiv + Semantic Scholar + Crossref | Агенты |
-| 4. Конструктор | Полноценный визуальный конструктор агентов через UI | Портал |
-| 5. SDK + доки | SDK на других языках, документация для писателей агентов | Портал (parallel) |
+| **1. Фундамент** | ✅ | Контракт + портал-MVP + 4 production-агента |
+| **2-3. Перенос реальных агентов** | ✅ | proverka, science, article-analyzer, translator |
+| **4. UI-конструктор** | ✅ | Мастер + ZIP + Git URL flow в админке |
+| **5. Расширения** | ✅ | Avatars, profile, cron, email, per-agent quota, sandbox endpoints |
+| 6. Дополнительные источники | ⏸ | NASA ADS, OpenAlex, e-library через прокси |
+| 7. Production-деплой | ⏸ | Hetzner + домен (вне scope demo) |
 
-## Frontend (Next.js)
-
-Frontend живёт в `apps/portal-frontend/`. Запуск:
-
-```bash
-docker compose up -d frontend
-# или для dev:
-cd apps/portal-frontend && npm run dev
-```
-
-Открывается на http://localhost:3000. Бэкенд должен быть на :8000 (`docker compose up api`).
-
-См. `apps/portal-frontend/README.md` для подробностей.
+См. `CHANGELOG.md` для деталей.

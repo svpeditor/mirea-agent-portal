@@ -7,36 +7,57 @@
 
 ## [Unreleased]
 
+### Added (план 1.7 — UI-конструктор агента) — PR #41-#43
+
+- **Мастер создания агента** (`POST /api/admin/agents/from-template`): JSON-спека → сервер генерит boilerplate (manifest+agent.py+requirements+Dockerfile) → собирает образ.
+- **ZIP-upload** (`POST /api/admin/agents/upload`): drag-drop архив до 50 МБ, защита от zip-slip, авто-flatten одного top-dir'а.
+- **CreateAgentDialog** на 3 таба: Мастер / ZIP / Git URL.
+- **AdminSubnav** — горизонтальная nav со всеми 8 админ-страницами под masthead.
+- **`docs/admin-guide.md`** — инструкция для администратора кафедры со скриншотами, 3 способами добавления, управлением квотами, troubleshooting.
+- **Article analyzer** в [отдельном репо](https://github.com/svpeditor/mirea-agent-portal-article-analyzer): папка PDF/DOCX + тема → разбор каждой статьи (метаданные APA+ГОСТ, проблема/методология/результаты, 3-5 цитат с переводом, score 0-10 + обоснование, обобщение топ-статей).
+- **Translator** в [отдельном репо](https://github.com/svpeditor/mirea-agent-portal-translator): DOCX/текст → перевод ru/en/zh через DeepSeek-R1 с глоссарием.
+- **science-agent v3.0.0**: «почему такой балл» (`relevance_explanation`), аннотация ~5 предложений, прямая ссылка на PDF arXiv, citation_count через Crossref/S2 enrichment, sort_by relevance/popularity.
+
+### Added (план 1.6 — cron, email, per-agent quota) — PR #34-#37
+
+- **Per-agent cost cap** (`agents.cost_cap_usd`, migration 0007): опциональный потолок стоимости одного запуска агента поверх per-user квоты.
+- **Email-уведомления** (migration 0008): `users.notify_on_job_finish`, SMTP-клиент в worker, отправка после job ≥30s. Graceful no-op без `SMTP_HOST`.
+- **Cron scheduled jobs** (migration 0009): 4 пресета (hourly/daily/weekly/monthly), worker scheduler daemon-thread (60s poll, SELECT FOR UPDATE SKIP LOCKED), admin CRUD UI на `/admin/crons`.
+- **Mobile responsive** топбара (nav → dropdown), AdminTable overflow-x-auto.
+
+### Added (план 1.5 — sandbox, аватары, профиль) — PR #19-#33
+
+- **`/api/sandbox/arxiv`** — allowlist-proxy в публичный интернет для агентов.
+- **`/api/sandbox/crossref`** — DOI + citation counts от Crossref.
+- **`/api/sandbox/semantic-scholar`** — abstracts + citationCount + DOI/arXiv-id.
+- **`/api/me/avatar`** + **`/api/admin/users/{id}/avatar`** — upload/stream/delete (PNG/JPEG/WebP, 2 МБ). Migration 0006 добавляет `users.avatar_storage_key`+`avatar_content_type`+`avatar_version` cache-buster.
+- **AvatarUploader** на `/me` + **аватары в `/admin/users`** + **аватар в шапке** (UserMenu trigger).
+- **DisplayNameEditor** — inline pencil-edit имени.
+- **NotifyToggle** — opt-in на email-уведомления.
+
 ### Added (план 1.4 — реальные агенты)
 
 - **proverka** в [отдельном репо](https://github.com/svpeditor/mirea-agent-portal-proverka): PDF/DOCX через pdfplumber → DeepSeek-R1 разбирает по чек-листу научной экспертизы → сводный Word + zip заключений.
-- **science-agent** в [отдельном репо](https://github.com/svpeditor/mirea-agent-portal-science) v2.0.0: real arXiv search через `/api/sandbox/arxiv` + LLM ранжирование, fallback на LLM-knowledge режим.
-- Stub-копии `agents/proverka_stub/` и `agents/science_agent_stub/` удалены — реальные репо живут снаружи и подключаются через `POST /api/admin/agents`.
+- **science-agent** в [отдельном репо](https://github.com/svpeditor/mirea-agent-portal-science): real arXiv через sandbox-прокси + LLM ранжирование.
+- Stub-копии `agents/proverka_stub/` и `agents/science_agent_stub/` удалены — реальные репо живут снаружи.
 
-### Added (план 1.5 — sandbox, аватары, профиль)
-
-- **`/api/sandbox/arxiv`** — allowlist-proxy для агентов в публичный интернет. Bearer ephemeral-token auth, Atom-feed arXiv → JSON, Origin middleware exempt.
-- **`/api/me/avatar`** + **`/api/admin/users/{id}/avatar`** — POST upload (PNG/JPEG/WebP, 2 МБ), GET stream, DELETE. Migration 0006 добавляет `users.avatar_storage_key` + `avatar_content_type`.
-- **`UserOut.has_avatar` + `avatar_version`** — короткий cache-buster для img URL.
-- **`AvatarUploader`** на `/me` со stamp-превью + Заменить/Удалить.
-- **`DisplayNameEditor`** — inline pencil-edit для display_name.
-- **Аватары в `/admin/users`** — колонка с stamp в UsersTable.
-- **Аватар в шапке** — `<img>` вместо initial-буквы в UserMenu trigger.
-
-### Fixed (план 1.5)
+### Fixed
 
 - `OriginCheckMiddleware` exempt для `/llm/v1` и `/api/sandbox` — агенты в изолированной сети не выставляют Origin, аутентификация bearer-токеном.
 - `bootstrap_admin` создаёт `UserQuota` для админа (без этого первый LLM вызов = 500 NoResultFound).
-- `llm_quota.preflight` lazy-backfill отсутствующей квоты (legacy юзеры из preview-БД).
-- `EventFeed` читал несуществующие SDK-поля (`p.message` вместо `p.msg`), из-за чего log/failed события рендерились как JSON-каша.
+- `llm_quota.preflight` lazy-backfill отсутствующей квоты (legacy юзеры).
+- `EventFeed` читал несуществующие SDK-поля (`p.message` вместо `p.msg`), log/failed события рендерились JSON-кашей.
+- `git clone file://` (zip-upload/wizard): протокол file разрешён + safe.directory=* + chown 1000:1000 в worker.
+- `services/email.py` восстановлен (потерян в первом коммите PR #35).
+- Mobile-вёрстка: nav-ссылки + квота скрыты на <md, продублированы в dropdown.
+- Эмодзи-stamps убраны с landing/AgentCard/agent-detail (выглядели колхозно).
 
-### Tests (план 1.5)
+### Tests
 
-- `test_sandbox_arxiv.py` (8): respx-mock на Atom-feed, validation, 401/502 ответы.
-- `test_me_avatar.py` (6): round-trip PNG, content-type rejection, size limit, DELETE flow.
+- `test_sandbox_arxiv.py` (8) + `test_sandbox_crossref_s2.py` (8): respx-mock на каждый источник, validation, 401/502/429.
+- `test_me_avatar.py` (6): round-trip PNG, content-type rejection, size limit, DELETE.
 - `test_bootstrap.py` + `test_llm_quota.py`: coverage admin UserQuota auto-create + lazy backfill.
-- `AvatarUploader.test.tsx` + `DisplayNameEditor.test.tsx` (11): vitest unit.
-- `EventFeed.test.ts` (7): фиксирует SDK→UI контракт (msg/id/summary).
+- `AvatarUploader.test.tsx` + `DisplayNameEditor.test.tsx` + `EventFeed.test.ts` (24): vitest unit.
 
 ---
 
