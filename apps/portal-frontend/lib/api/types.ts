@@ -7,6 +7,7 @@ export interface UserOut {
   display_name: string;
   role: 'user' | 'admin';
   monthly_budget_usd: string;  // Decimal as string
+  has_avatar: boolean;
   created_at: string;
 }
 
