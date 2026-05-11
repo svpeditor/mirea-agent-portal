@@ -42,6 +42,8 @@
   --font-sans: var(--font-pt-sans), ui-sans-serif, system-ui, sans-serif;
   --font-serif: var(--font-pt-serif), 'PT Serif', Georgia, serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, 'JetBrains Mono', monospace;
+  /* Wood-type masthead — 19th-c. journal headings */
+  --font-masthead: var(--font-old-standard), 'PT Serif', 'Times New Roman', serif;
 
   /* Type scale — журнальная типографика */
   --text-xs: 0.7rem;
@@ -81,11 +83,14 @@
     font-feature-settings: 'kern', 'liga', 'pnum';
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    /* Subtle paper grain — noisy texture for "old book" feel */
+    /* Aged paper: warm radial tints + edge vignette + SVG fractal-noise grain. */
     background-image:
-      radial-gradient(circle at 20% 20%, rgba(26, 24, 20, 0.02) 0, transparent 40%),
-      radial-gradient(circle at 80% 70%, rgba(169, 29, 36, 0.015) 0, transparent 40%);
-    background-attachment: fixed;
+      radial-gradient(circle at 20% 20%, rgba(26, 24, 20, 0.03) 0, transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(169, 29, 36, 0.02) 0, transparent 40%),
+      radial-gradient(ellipse at center, transparent 55%, rgba(26, 24, 20, 0.07) 100%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.09 0 0 0 0 0.08 0 0 0 0.07 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    background-attachment: fixed, fixed, fixed, fixed;
+    background-size: auto, auto, auto, 160px 160px;
   }
 
   h1, h2, h3, h4 {
@@ -178,16 +183,46 @@
     line-height: 1.05;
   }
 
-  /* Drop cap — first letter of paragraph as ornamental initial */
+  /* Drop cap — first letter ornamental initial.
+     Masthead-font: more dramatic, with serif texture and red ink. */
   .ed-drop-cap::first-letter {
-    font-family: var(--font-serif);
-    font-size: 4.2em;
-    line-height: 0.85;
+    font-family: var(--font-masthead);
+    font-size: 5.2em;
+    line-height: 0.82;
     float: left;
-    padding: 0.08em 0.12em 0 0;
-    margin-bottom: -0.1em;
+    padding: 0.08em 0.14em 0 0;
+    margin-bottom: -0.15em;
     font-weight: 700;
     color: var(--color-accent);
+    text-shadow: 0.5px 0 0 var(--color-accent), 0 0.5px 0 var(--color-accent-hover);
+  }
+
+  /* Masthead-style — wood-type 19th-century journal heading. */
+  .ed-masthead {
+    font-family: var(--font-masthead);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 0.88;
+  }
+
+  /* Ornament — fleurons, asterisms, paragraph marks. */
+  .ed-ornament {
+    font-family: var(--font-masthead);
+    color: var(--color-accent);
+    line-height: 1;
+    font-style: normal;
+  }
+
+  /* Marginalia — sidenote, manuscript margin gloss. */
+  .ed-marginalia {
+    font-family: var(--font-serif);
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: var(--color-text-secondary);
+    font-style: italic;
+    border-left: 2px solid var(--color-accent);
+    padding-left: 0.85rem;
+    max-width: 22ch;
   }
 
   /* Hairline rules — структура журнальной страницы */
@@ -298,6 +333,16 @@
   from { opacity: 0; }
   to   { opacity: 1; }
 }
+/* Wood-block stamp reveal: overshoot scale, blur-to-sharp, letter-spacing settle. */
+@keyframes ed-stamp-in {
+  0%   { opacity: 0; transform: scale(1.06); filter: blur(2px); letter-spacing: 0.01em; }
+  60%  { opacity: 1; transform: scale(0.985); filter: blur(0); }
+  100% { opacity: 1; transform: scale(1); filter: blur(0); letter-spacing: -0.025em; }
+}
+@keyframes ed-ink-bleed {
+  0%   { opacity: 0; transform: scale(0.85) rotate(-3deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
 
 @layer utilities {
   .ed-anim-rise {
@@ -308,6 +353,12 @@
   }
   .ed-anim-fade {
     animation: ed-fade-in 0.6s ease backwards;
+  }
+  .ed-anim-stamp {
+    animation: ed-stamp-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  }
+  .ed-anim-bleed {
+    animation: ed-ink-bleed 0.7s cubic-bezier(0.22, 1, 0.36, 1) backwards;
   }
 
   /* Stagger delays — 0..9 */
