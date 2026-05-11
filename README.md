@@ -6,19 +6,26 @@
 
 ## Статус
 
-🟢 **План 1.1 закрыт. SDK v0.1.0 опубликован.**
+🟢 **Спек 1 «Фундамент» технически готов.** Demo-инстанс работает.
 
-- ✅ Спек 1 «Фундамент платформы» — написан и закоммичен
-- ✅ План 1.1 — Контракт + Python-SDK + echo-агент (53 теста, tag `sdk-v0.1.0`)
-- ⏳ План 1.2 — Backend API + Job Queue + Docker-runner — следующий
-- ⏳ План 1.3 — Frontend
-- ⏳ План 1.4 — Перенос proverka под контракт
+- ✅ План 1.1 — Контракт + Python-SDK + echo-агент (tag `sdk-v0.1.0`)
+- ✅ План 1.2 — Backend API + Job Queue + Docker-runner + LLM-прокси
+- ✅ План 1.3 — Frontend (PR #6 — пока на review)
+- 🟡 План 1.4 — Перенос реальных агентов:
+  - milestone-0: stub-агенты `agents/proverka_stub/` и `agents/science_agent_stub/` опубликованы
+  - milestone-1: real-код — ждёт ОК от куратора НУГ (см. `QUESTIONS_FOR_DANYA.md`)
 
-Команда «агенты» может начинать писать агентов прямо сейчас:
-- Установить SDK: `pip install -e ./packages/portal-sdk-python`
-- Прочитать контракт: `docs/contract.md`
+Команда «агенты» — пишут агентов:
+- **Гид разработчика**: [`docs/agent-developer-guide.md`](docs/agent-developer-guide.md)
+- Контракт: [`docs/contract.md`](docs/contract.md)
+- JSON Schema для IDE: [`docs/manifest.schema.json`](docs/manifest.schema.json)
+- Установить Python SDK: `pip install -e ./packages/portal-sdk-python`
+- Или TypeScript SDK: `npm install ./packages/portal-sdk-ts`
 - Скопировать `agents/echo/` как шаблон
+- Проверить манифест: `portal-sdk-validate-manifest .`
 - Запустить локально: `portal-sdk-run-local <agent_dir>`
+
+Деплой: [`docs/deploy-guide.md`](docs/deploy-guide.md).
 
 ## Что есть в репо
 
