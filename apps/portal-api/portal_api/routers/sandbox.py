@@ -20,7 +20,7 @@ from portal_api.services.ephemeral_token import EphemeralTokenContext
 
 router = APIRouter(prefix="/api/sandbox", tags=["sandbox"])
 
-ARXIV_API = "http://export.arxiv.org/api/query"
+ARXIV_API = "https://export.arxiv.org/api/query"
 ARXIV_TIMEOUT_S = 30.0
 MAX_RESULTS_HARD_CAP = 100
 
@@ -49,7 +49,9 @@ async def arxiv_search(
         "&sortBy=relevance&sortOrder=descending"
     )
     try:
-        async with httpx.AsyncClient(timeout=ARXIV_TIMEOUT_S) as client:
+        async with httpx.AsyncClient(
+            timeout=ARXIV_TIMEOUT_S, follow_redirects=True,
+        ) as client:
             r = await client.get(url)
     except httpx.TimeoutException as e:
         raise HTTPException(
