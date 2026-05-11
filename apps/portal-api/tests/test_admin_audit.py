@@ -101,3 +101,40 @@ async def test_admin_audit_pagination(admin_client: AsyncClient) -> None:
 async def test_admin_audit_invalid_limit(admin_client: AsyncClient) -> None:
     resp = await admin_client.get("/api/admin/audit?limit=999")
     assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_audit_cleanup_min_30_days(admin_client: AsyncClient) -> None:
+    """days < 30 → 400 (защита от accidental wipe)."""
+    resp = await admin_client.post("/api/admin/audit/cleanup?days=10")
+    assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_audit_cleanup_returns_deleted_count(admin_client: AsyncClient) -> None:
+    """Cleanup с большим days возвращает {deleted: 0} (нет старых записей)."""
+    resp = await admin_client.post("/api/admin/audit/cleanup?days=365")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "deleted" in body
+    assert isinstance(body["deleted"], int)
+
+
+@pytest.mark.asyncio
+async def test_audit_cleanup_requires_admin(user_client: AsyncClient) -> None:
+    resp = await user_client.post("/api/admin/audit/cleanup?days=365")
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_audit_cleanup_logs_itself(admin_client: AsyncClient) -> None:
+    """Сам факт cleanup записывается в audit log как audit.cleanup."""
+    resp = await admin_client.post("/api/admin/audit/cleanup?days=365")
+    assert resp.status_code == 200
+
+    # На audit-странице должна появиться запись audit.cleanup
+    audit_resp = await admin_client.get("/api/admin/audit?action=audit.cleanup")
+    body = audit_resp.json()
+    assert len(body) >= 1
+    assert body[0]["action"] == "audit.cleanup"
+    assert body[0]["payload"]["days"] == 365
