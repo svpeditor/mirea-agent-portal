@@ -66,7 +66,7 @@ export default async function MePage({
 
         {/* Identity stamp / avatar block */}
         <div className="hidden items-center justify-end lg:flex">
-          <AvatarUploader hasAvatar={me.has_avatar} initials={initials} />
+          <AvatarUploader hasAvatar={me.has_avatar} avatarVersion={me.avatar_version} initials={initials} />
         </div>
       </div>
 

@@ -11,10 +11,11 @@ const ALLOWED = ['image/png', 'image/jpeg', 'image/webp'];
 
 interface Props {
   hasAvatar: boolean;
+  avatarVersion: string | null;
   initials: string;
 }
 
-export function AvatarUploader({ hasAvatar, initials }: Props) {
+export function AvatarUploader({ hasAvatar, avatarVersion, initials }: Props) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement | null>(null);
   // cache-buster: уникальный id чтобы заменить картинку после upload/delete
@@ -70,7 +71,7 @@ export function AvatarUploader({ hasAvatar, initials }: Props) {
           {hasAvatar ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={`/api/me/avatar?v=${bust}`}
+              src={`/api/me/avatar?v=${bust || avatarVersion || ''}`}
               alt="Аватар"
               className="h-full w-full object-cover"
             />
