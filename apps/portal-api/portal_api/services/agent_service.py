@@ -46,12 +46,16 @@ _CLONE_TIMEOUT_SECONDS = 60
 
 def _shallow_clone_sync(git_url: str, git_sha: str) -> dict[str, Any]:
     """Синхронный shallow-clone + чтение manifest.yaml для указанного SHA."""
+    # Для file:// (zip-upload / wizard) нужны флаги — см. git_clone.py в worker.
+    extra_cfg: list[str] = []
+    if git_url.startswith("file://"):
+        extra_cfg = ["-c", "protocol.file.allow=always", "-c", "safe.directory=*"]
     with tempfile.TemporaryDirectory() as tmp:
         clone_dir = Path(tmp) / "repo"
         try:
             subprocess.run(
                 [
-                    "git",
+                    "git", *extra_cfg,
                     "clone",
                     "--depth=1",
                     "--no-single-branch",
@@ -64,20 +68,16 @@ def _shallow_clone_sync(git_url: str, git_sha: str) -> dict[str, Any]:
             )
             subprocess.run(
                 [
-                    "git",
-                    "-C",
-                    str(clone_dir),
-                    "fetch",
-                    "--depth=1",
-                    "origin",
-                    git_sha,
+                    "git", *extra_cfg,
+                    "-C", str(clone_dir),
+                    "fetch", "--depth=1", "origin", git_sha,
                 ],
                 capture_output=True,
                 check=True,
                 timeout=_CLONE_TIMEOUT_SECONDS,
             )
             subprocess.run(
-                ["git", "-C", str(clone_dir), "checkout", git_sha],
+                ["git", *extra_cfg, "-C", str(clone_dir), "checkout", git_sha],
                 capture_output=True,
                 check=True,
                 timeout=_CLONE_TIMEOUT_SECONDS,

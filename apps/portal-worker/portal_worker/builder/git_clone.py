@@ -38,23 +38,32 @@ def clone_at_sha(
     target_dir.parent.mkdir(parents=True, exist_ok=True)
 
     is_sha = bool(_FULL_SHA.match(git_ref))
+    # Для file:// (zip-upload / wizard) нужны два флага:
+    # - protocol.file.allow=always: с git 2.38 file:// заблокирован дефолтно (CVE-2022-39253)
+    # - safe.directory=*: иначе git ругается на 'dubious ownership' через uid mismatch
+    extra_cfg: list[str] = []
+    if git_url.startswith("file://"):
+        extra_cfg = [
+            "-c", "protocol.file.allow=always",
+            "-c", "safe.directory=*",
+        ]
     try:
         if is_sha:
             subprocess.run(
-                ["git", "clone", git_url, str(target_dir)],
+                ["git", *extra_cfg, "clone", git_url, str(target_dir)],
                 check=True,
                 timeout=clone_timeout,
                 capture_output=True,
             )
             subprocess.run(
-                ["git", "-C", str(target_dir), "checkout", git_ref],
+                ["git", *extra_cfg, "-C", str(target_dir), "checkout", git_ref],
                 check=True,
                 timeout=10,
                 capture_output=True,
             )
         else:
             subprocess.run(
-                ["git", "clone", "--depth=1", "--branch", git_ref, git_url, str(target_dir)],
+                ["git", *extra_cfg, "clone", "--depth=1", "--branch", git_ref, git_url, str(target_dir)],
                 check=True,
                 timeout=clone_timeout,
                 capture_output=True,
