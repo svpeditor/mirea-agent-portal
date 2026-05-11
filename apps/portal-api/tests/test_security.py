@@ -55,6 +55,30 @@ async def test_get_with_bad_origin_allowed(
 
 
 @pytest.mark.asyncio
+async def test_llm_proxy_post_without_origin_not_blocked_by_middleware(
+    client: AsyncClient,
+) -> None:
+    """POST на /llm/v1/* без Origin не должен ловить ORIGIN_MISMATCH.
+
+    Агентский контейнер в изолированной docker-сети не выставляет Origin —
+    аутентификация идёт по Bearer-токену (ephemeral), CSRF неприменим.
+    Без exempt'а middleware блокировал бы все вызовы LLM из агентов 403.
+
+    Тест проверяет именно факт прохождения middleware (любой не-403
+    ответ от роутера). Реальный ответ зависит от токена: без него — 401
+    из ephemeral_token_auth, а не 403 от Origin-проверки.
+    """
+    resp = await client.post(
+        "/llm/v1/chat/completions",
+        json={"model": "deepseek/deepseek-chat", "messages": []},
+    )
+    assert resp.status_code != 403, (
+        "Origin middleware заблокировал LLM-прокси — добавь /llm/v1 "
+        "в _BEARER_AUTH_PREFIXES (apps/portal-api/portal_api/core/origin.py)"
+    )
+
+
+@pytest.mark.asyncio
 async def test_no_user_enumeration_in_login(client: AsyncClient, regular_user: User) -> None:
     """Login с неверным паролем и login несуществующего юзера дают одинаковую ошибку."""
     r1 = await client.post(
