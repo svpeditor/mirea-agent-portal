@@ -51,7 +51,13 @@
 
 - **`agents/proverka_stub/`** — folder-input → docx report + zip per-work.
 - **`agents/science_agent_stub/`** — textarea topic → docx + bibtex, runtime.llm объявлен.
+- **`agents/echo-ts/`** — TypeScript-эквивалент echo, доказывает 1:1 совместимость TS SDK с контрактом портала.
 - Опубликованы в каталоге: `svpeditor/mirea-agent-portal-{proverka,science}-stub`.
+
+### Added (admin)
+
+- **`GET /api/admin/jobs`** + **`/admin/jobs`** UI — все запуски всех юзеров с пагинацией и авто-обновлением.
+- **`POST /api/admin/audit/cleanup`** — ручной cleanup старых audit-записей (минимум 30 дней).
 
 ### Fixed
 
