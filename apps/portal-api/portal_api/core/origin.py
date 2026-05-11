@@ -16,7 +16,7 @@ _UNSAFE_METHODS = frozenset({"POST", "PATCH", "PUT", "DELETE"})
 # Пути, аутентифицирующиеся по Bearer-токену из docker-network, а не по cookie.
 # Origin-проверка для них бессмысленна (CSRF не работает без cookie) и при этом
 # ломает легитимные вызовы из контейнеров агентов, где Origin не выставляется.
-_BEARER_AUTH_PREFIXES = ("/llm/v1",)
+_BEARER_AUTH_PREFIXES = ("/llm/v1", "/api/sandbox")
 
 
 class OriginCheckMiddleware(BaseHTTPMiddleware):
