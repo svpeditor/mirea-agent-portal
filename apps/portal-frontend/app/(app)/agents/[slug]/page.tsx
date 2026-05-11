@@ -73,7 +73,7 @@ export default async function AgentDetailPage({
           <span className="font-mono">v{agent.current_version.manifest_version}</span>
         </div>
 
-        <h1 className="ed-masthead ed-anim-stamp text-5xl md:text-7xl">
+        <h1 className="ed-display text-5xl md:text-7xl">
           {agent.name}
         </h1>
 
