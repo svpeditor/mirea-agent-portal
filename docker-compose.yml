@@ -44,6 +44,10 @@ services:
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       LLM_ALLOWED_MODELS: ${LLM_ALLOWED_MODELS}
       LLM_PROXY_BASE_URL: http://api:8000/llm/v1
+      # Sentry (опционально). Без SENTRY_DSN init_sentry no-op.
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_RELEASE: ${SENTRY_RELEASE:-}
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0.0}
     ports:
       - "8000:8000"
     volumes:
@@ -79,6 +83,9 @@ services:
       LLM_PROXY_BASE_URL: http://api:8000/llm/v1
       LLM_AGENTS_NETWORK_NAME: agent_portal-wave0_portal-agents-net
       LLM_ALLOWED_MODELS: ${LLM_ALLOWED_MODELS}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_RELEASE: ${SENTRY_RELEASE:-}
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0.0}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./packages/portal-sdk-python:/portal-sdk:ro
