@@ -2,6 +2,11 @@
 # apps/portal-api/scripts/start.sh
 set -e
 
+# Чтобы api мог git ls-remote / clone из file://-репо в /var/portal-files
+# (zip-upload и wizard кладут туда репозитории, owner может быть != root).
+git config --global safe.directory '*' || true
+git config --global protocol.file.allow always || true
+
 echo "[start.sh] Запуск миграций..."
 alembic upgrade head
 

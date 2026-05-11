@@ -13,4 +13,7 @@ RUN sed -i 's#file:../../packages/portal-sdk-python#file:///portal-sdk-src#' pyp
     pip install --no-cache-dir -e "."
 COPY --chown=worker:worker apps/portal-worker/portal_worker /app/portal_worker
 USER worker
+# Чтобы worker мог git clone из file://-репо (zip-upload / wizard).
+RUN git config --global safe.directory '*' && \
+    git config --global protocol.file.allow always
 CMD ["python", "-m", "portal_worker.main"]

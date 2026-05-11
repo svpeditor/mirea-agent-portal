@@ -5,7 +5,8 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile, status
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from portal_api.config import Settings, get_settings
@@ -18,7 +19,7 @@ from portal_api.schemas.agent import (
     AgentUpdateIn,
 )
 from portal_api.schemas.agent_version import AgentVersionEnqueuedOut
-from portal_api.services import agent_service, audit_service
+from portal_api.services import agent_service, agent_template, agent_upload, audit_service
 from portal_api.services.audit_service import A as Action
 from portal_api.services.build_enqueue import BuildEnqueuer
 
@@ -78,12 +79,134 @@ async def create_agent(
     enqueuer: BuildEnqueuer = Depends(get_build_enqueuer),
     admin: User = Depends(require_admin),
 ) -> dict[str, Any]:
+    return await _register(
+        db=db, settings=settings, enqueuer=enqueuer, admin=admin, request=request,
+        git_url=str(payload.git_url), git_ref=payload.git_ref,
+        audit_payload={"git_url": str(payload.git_url), "git_ref": payload.git_ref, "source": "git"},
+    )
+
+
+@router.post("/upload", status_code=status.HTTP_201_CREATED)
+async def upload_agent_zip(
+    file: UploadFile,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+    enqueuer: BuildEnqueuer = Depends(get_build_enqueuer),
+    admin: User = Depends(require_admin),
+) -> dict[str, Any]:
+    """Загрузка агента как ZIP-архива — для не-разработчиков, без GitHub."""
+    if not (file.filename or "").lower().endswith(".zip"):
+        raise HTTPException(
+            status_code=400,
+            detail={"error": {"code": "NOT_ZIP", "message": "Ожидался .zip файл."}},
+        )
+    raw = await file.read(50 * 1024 * 1024 + 1)
+    if len(raw) > 50 * 1024 * 1024:
+        raise HTTPException(
+            status_code=413,
+            detail={"error": {"code": "ZIP_TOO_LARGE", "message": "ZIP больше 50 МБ."}},
+        )
+    try:
+        git_url, git_ref = await agent_upload.stage_zip_as_local_repo_async(
+            raw, settings.file_store_local_root,
+        )
+    except agent_upload.AgentUploadError as e:
+        raise HTTPException(
+            status_code=400,
+            detail={"error": {"code": e.code, "message": e.message}},
+        ) from e
+    return await _register(
+        db=db, settings=settings, enqueuer=enqueuer, admin=admin, request=request,
+        git_url=git_url, git_ref=git_ref,
+        audit_payload={"source": "zip-upload", "filename": file.filename, "size": len(raw)},
+    )
+
+
+class _TemplateInputIn(BaseModel):
+    id: str = Field(min_length=1, max_length=64, pattern=r"^[a-z][a-z0-9_]*$")
+    type: str
+    label: str
+    required: bool = False
+
+
+class _TemplateOutputIn(BaseModel):
+    id: str = Field(min_length=1, max_length=64)
+    type: str
+    label: str
+    filename: str
+    primary: bool = False
+
+
+class _FromTemplateIn(BaseModel):
+    slug: str = Field(min_length=2, max_length=80, pattern=r"^[a-z][a-z0-9-]*$")
+    name: str = Field(min_length=1, max_length=120)
+    icon: str | None = None
+    category: str
+    short_description: str = Field(min_length=1, max_length=500)
+    inputs: list[_TemplateInputIn] = Field(default_factory=list, max_length=12)
+    outputs: list[_TemplateOutputIn] = Field(min_length=1, max_length=8)
+    use_llm: bool = False
+
+
+@router.post("/from-template", status_code=status.HTTP_201_CREATED)
+async def create_agent_from_template(
+    payload: _FromTemplateIn,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+    enqueuer: BuildEnqueuer = Depends(get_build_enqueuer),
+    admin: User = Depends(require_admin),
+) -> dict[str, Any]:
+    """Wizard: JSON-спека → portal сам генерит boilerplate + регистрирует."""
+    spec = agent_template.TemplateSpec(
+        slug=payload.slug, name=payload.name, icon=payload.icon,
+        category=payload.category, short_description=payload.short_description,
+        inputs=[
+            agent_template.TemplateInput(
+                id=i.id, type=i.type, label=i.label, required=i.required,  # type: ignore[arg-type]
+            ) for i in payload.inputs
+        ],
+        outputs=[
+            agent_template.TemplateOutput(
+                id=o.id, type=o.type, label=o.label,  # type: ignore[arg-type]
+                filename=o.filename, primary=o.primary,
+            ) for o in payload.outputs
+        ],
+        use_llm=payload.use_llm,
+    )
+    files = agent_template.build_template_files(spec)
+    try:
+        git_url, git_ref = await agent_upload.stage_template_as_local_repo_async(
+            files, settings.file_store_local_root,
+        )
+    except agent_upload.AgentUploadError as e:
+        raise HTTPException(
+            status_code=400,
+            detail={"error": {"code": e.code, "message": e.message}},
+        ) from e
+    return await _register(
+        db=db, settings=settings, enqueuer=enqueuer, admin=admin, request=request,
+        git_url=git_url, git_ref=git_ref,
+        audit_payload={"source": "wizard", "slug": payload.slug},
+    )
+
+
+async def _register(
+    *,
+    db: AsyncSession,
+    settings: Settings,
+    enqueuer: BuildEnqueuer,
+    admin: User,
+    request: Request,
+    git_url: str,
+    git_ref: str,
+    audit_payload: dict,
+) -> dict[str, Any]:
+    """Общий хвост для create_agent / upload / from-template."""
     agent, version = await agent_service.create_agent(
-        db,
-        git_url=str(payload.git_url),
-        git_ref=payload.git_ref,
-        settings=settings,
-        created_by_user_id=admin.id,
+        db, git_url=git_url, git_ref=git_ref,
+        settings=settings, created_by_user_id=admin.id,
     )
     ip, ua = audit_service.request_meta(request)
     await audit_service.log_action(
@@ -92,7 +215,7 @@ async def create_agent(
         action=Action.AGENT_CREATE,
         resource_type="agent",
         resource_id=str(agent.id),
-        payload={"git_url": str(payload.git_url), "git_ref": payload.git_ref},
+        payload=audit_payload,
         ip=ip,
         user_agent=ua,
     )

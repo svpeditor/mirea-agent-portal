@@ -30,8 +30,12 @@ async def resolve_git_ref(git_url: str, git_ref: str) -> str:
     if not _is_supported_url(git_url):
         raise InvalidGitUrlError()
 
+    extra_cfg: list[str] = []
+    if git_url.startswith("file://"):
+        extra_cfg = ["-c", "protocol.file.allow=always", "-c", "safe.directory=*"]
+
     proc = await asyncio.create_subprocess_exec(
-        "git",
+        "git", *extra_cfg,
         "ls-remote",
         "--heads",
         "--tags",
