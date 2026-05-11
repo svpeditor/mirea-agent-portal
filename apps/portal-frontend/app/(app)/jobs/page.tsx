@@ -5,7 +5,10 @@ import type { JobListItemOut } from '@/lib/api/types';
 import { JobsTable } from '@/components/jobs/JobsTable';
 import { JobsAutoRefresh } from '@/components/jobs/JobsAutoRefresh';
 import { JobsFilterBar } from '@/components/jobs/JobsFilterBar';
+import { JobsPagination } from '@/components/jobs/JobsPagination';
 import { Send } from 'lucide-react';
+
+const PAGE_SIZE = 30;
 
 const FILTER_STATUSES: Record<string, string[]> = {
   active: ['queued', 'running'],
@@ -21,18 +24,25 @@ export default async function JobsPage({
 }) {
   const sp = await searchParams;
   const filter = sp.filter ?? 'all';
+  const cursor = sp.cursor;
 
-  const allJobs = await apiServer<JobListItemOut[]>('/api/jobs?limit=100');
+  const query = new URLSearchParams({ limit: String(PAGE_SIZE) });
+  if (cursor) query.set('before', cursor);
+  const pageJobs = await apiServer<JobListItemOut[]>(`/api/jobs?${query}`);
 
+  // Counts по статусам на первой странице — справочно. Для точных
+  // глобальных счётчиков потребуется отдельный backend endpoint.
   const counts: Record<string, number> = {};
-  for (const j of allJobs) counts[j.status] = (counts[j.status] ?? 0) + 1;
+  for (const j of pageJobs) counts[j.status] = (counts[j.status] ?? 0) + 1;
 
   const allowed = FILTER_STATUSES[filter];
   const jobs = allowed
-    ? allJobs.filter((j) => allowed.includes(j.status))
-    : allJobs;
+    ? pageJobs.filter((j) => allowed.includes(j.status))
+    : pageJobs;
 
   const hasActiveJobs = jobs.some((j) => j.status === 'queued' || j.status === 'running');
+  const hasMore = pageJobs.length === PAGE_SIZE;
+  const lastId = pageJobs[pageJobs.length - 1]?.id ?? null;
 
   return (
     <div className="mx-auto max-w-[1400px] px-8 py-12">
@@ -50,9 +60,9 @@ export default async function JobsPage({
         </div>
         <div className="flex flex-col items-start justify-end gap-4 md:items-end">
           <p className="ed-meta md:text-right">
-            Показано <span className="text-[color:var(--color-text-primary)] font-bold">{jobs.length}</span>
+            Страница: <span className="text-[color:var(--color-text-primary)] font-bold">{jobs.length}</span>
             {' из '}
-            <span className="text-[color:var(--color-text-primary)] font-bold">{allJobs.length}</span>
+            <span className="text-[color:var(--color-text-primary)] font-bold">{pageJobs.length}</span>
           </p>
           <Link
             href={'/agents' as Route}
@@ -70,13 +80,13 @@ export default async function JobsPage({
       {jobs.length === 0 ? (
         <div className="ed-anim-rise ed-d-2 border border-[color:var(--color-text-primary)] bg-[color:var(--color-bg-tertiary)] p-16 text-center">
           <div className="ed-eyebrow mb-4 text-[color:var(--color-accent)]">
-            {allJobs.length === 0 ? 'ХРОНИКА ПУСТА' : 'НИЧЕГО НЕ НАЙДЕНО'}
+            {pageJobs.length === 0 ? 'ХРОНИКА ПУСТА' : 'НИЧЕГО НЕ НАЙДЕНО'}
           </div>
           <h2 className="font-serif text-3xl font-bold">
-            {allJobs.length === 0 ? 'Запусков ещё не было' : 'По этому фильтру пусто'}
+            {pageJobs.length === 0 ? 'Запусков ещё не было' : 'По этому фильтру пусто'}
           </h2>
           <p className="mx-auto mt-4 max-w-md font-serif text-base leading-relaxed text-[color:var(--color-text-secondary)]">
-            {allJobs.length === 0
+            {pageJobs.length === 0
               ? 'Перейдите в каталог агентов и запустите первую задачу. Она появится здесь со всеми событиями и результатом.'
               : 'Сними фильтр или попробуй другой статус.'}
           </p>
@@ -86,9 +96,12 @@ export default async function JobsPage({
           </Link>
         </div>
       ) : (
-        <div className="ed-anim-rise ed-d-2">
-          <JobsTable jobs={jobs} />
-        </div>
+        <>
+          <div className="ed-anim-rise ed-d-2">
+            <JobsTable jobs={jobs} />
+          </div>
+          <JobsPagination lastId={lastId} hasItems={jobs.length > 0} hasMore={hasMore} />
+        </>
       )}
     </div>
   );
