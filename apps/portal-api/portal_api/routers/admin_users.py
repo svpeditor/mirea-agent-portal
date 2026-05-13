@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from portal_api.config import Settings, get_settings
+from portal_api.core.exceptions import AppError
 from portal_api.deps import get_db, require_admin
 from portal_api.models import User
 from portal_api.schemas.user import ResetPasswordOut, UserAdminOut, UserAdminUpdate, UserOut
@@ -66,6 +67,12 @@ async def patch_user(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ) -> User:
+    if payload.role is not None and user_id == admin.id:
+        raise AppError(
+            code="CANNOT_CHANGE_OWN_ROLE",
+            message="Нельзя менять собственную роль",
+            status_code=400,
+        )
     user = await user_service.update_user_admin(
         db,
         user_id,

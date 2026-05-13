@@ -3,6 +3,7 @@ import { ApiError, type UserOut } from '@/lib/api/types';
 import { UsersTable } from '@/components/admin/UsersTable';
 import { UserDrawer } from '@/components/admin/UserDrawer';
 import { InviteDialog } from '@/components/admin/InviteDialog';
+import { requireAdmin } from '@/lib/auth/current-user';
 
 interface UsersListOut {
   users: UserOut[];
@@ -24,11 +25,12 @@ export default async function AdminUsersPage({
   searchParams: Promise<{ drawer?: string }>;
 }) {
   const { drawer } = await searchParams;
-  const [list, usage] = await Promise.all([
+  const [list, usage, me] = await Promise.all([
     apiServer<UsersListOut>('/api/admin/users'),
     apiServer<{
       by_user: Array<{ user_id: string; email: string; cost_usd: string; requests: number }>;
     }>('/api/admin/usage').catch(() => ({ by_user: [] })),
+    requireAdmin(),
   ]);
 
   const costByUserId: Record<string, string> = {};
@@ -82,7 +84,7 @@ export default async function AdminUsersPage({
         />
       </div>
 
-      <UserDrawer user={selectedUser} />
+      <UserDrawer user={selectedUser} currentUserId={me.id} />
     </div>
   );
 }

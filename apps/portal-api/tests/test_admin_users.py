@@ -90,6 +90,35 @@ async def test_patch_user_invalid_role(
 
 
 @pytest.mark.asyncio
+async def test_patch_user_demote_to_user(
+    admin_client: AsyncClient, db: AsyncSession
+) -> None:
+    other_admin = await UserFactory.create(db, email="other-admin@example.com", role="admin")
+    await db.commit()
+
+    resp = await admin_client.patch(
+        f"/api/admin/users/{other_admin.id}",
+        json={"role": "user"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["role"] == "user"
+
+
+@pytest.mark.asyncio
+async def test_patch_user_cannot_change_own_role(
+    admin_client: AsyncClient, admin_user: User
+) -> None:
+    resp = await admin_client.patch(
+        f"/api/admin/users/{admin_user.id}",
+        json={"role": "user"},
+    )
+    assert resp.status_code == 400
+    assert resp.json()["error"]["code"] == "CANNOT_CHANGE_OWN_ROLE"
+
+
+
+
+@pytest.mark.asyncio
 async def test_delete_user(
     admin_client: AsyncClient, db: AsyncSession
 ) -> None:

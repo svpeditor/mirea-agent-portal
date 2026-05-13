@@ -22,15 +22,42 @@ interface UserAdminOut extends UserOut {
 
 interface Props {
   user: UserAdminOut | null;
+  currentUserId: string;
 }
 
-export function UserDrawer({ user }: Props) {
+export function UserDrawer({ user, currentUserId }: Props) {
   const router = useRouter();
   const [monthlyLimit, setMonthlyLimit] = useState(user?.quota?.monthly_limit_usd ?? '');
   const [perJobCap, setPerJobCap] = useState(user?.quota?.per_job_cap_usd ?? '');
   const [saving, setSaving] = useState(false);
 
   if (!user) return null;
+
+  const isSelf = user.id === currentUserId;
+  const isAdmin = user.role === 'admin';
+
+  async function changeRole(newRole: 'user' | 'admin') {
+    if (!user) return;
+    if (newRole === 'user') {
+      const ok = window.confirm(
+        `Понизить ${user.email} до обычного пользователя? Доступа к админ-разделу больше не будет.`,
+      );
+      if (!ok) return;
+    }
+    setSaving(true);
+    try {
+      await apiClient(`/api/admin/users/${user.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ role: newRole }),
+      });
+      toast.success(newRole === 'admin' ? 'Назначен админом' : 'Роль понижена до пользователя');
+      router.refresh();
+    } catch (err) {
+      toast.error(mapApiError(err));
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function saveQuota() {
     if (!user) return;
@@ -89,9 +116,24 @@ export function UserDrawer({ user }: Props) {
           <div>
             <span className="text-[color:var(--color-text-secondary)]">Имя:</span> {user.display_name}
           </div>
-          <div>
+          <div className="flex items-center gap-2">
             <span className="text-[color:var(--color-text-secondary)]">Роль:</span>{' '}
             <code className="font-mono">{user.role}</code>
+            {!isSelf && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => changeRole(isAdmin ? 'user' : 'admin')}
+                disabled={saving}
+              >
+                {isAdmin ? 'Понизить до пользователя' : 'Сделать админом'}
+              </Button>
+            )}
+            {isSelf && (
+              <span className="text-xs text-[color:var(--color-text-secondary)]">
+                (нельзя менять собственную роль)
+              </span>
+            )}
           </div>
           <div>
             <span className="text-[color:var(--color-text-secondary)]">Создан:</span> {formatDate(user.created_at)}
