@@ -30,6 +30,7 @@ export function CommandPalette({ isAdmin }: Props) {
     const admin: Cmd[] = isAdmin
       ? [
           { id: 'a-users', label: 'Редакция · юзеры', group: 'АДМИН', href: '/admin/users' as Route },
+          { id: 'a-invites', label: 'Редакция · приглашения', group: 'АДМИН', href: '/admin/invites' as Route },
           { id: 'a-agents', label: 'Редакция · агенты', group: 'АДМИН', href: '/admin/agents' as Route },
           { id: 'a-tabs', label: 'Редакция · вкладки', group: 'АДМИН', href: '/admin/tabs' as Route },
           { id: 'a-usage', label: 'Редакция · LLM usage', group: 'АДМИН', href: '/admin/usage' as Route },

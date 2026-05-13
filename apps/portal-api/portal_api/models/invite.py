@@ -4,7 +4,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, func, text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, String, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -13,6 +13,9 @@ from portal_api.models.base import Base
 
 class Invite(Base):
     __tablename__ = "invites"
+    __table_args__ = (
+        CheckConstraint("role IN ('user', 'admin')", name="invites_role_check"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -21,6 +24,8 @@ class Invite(Base):
     )
     token: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     email: Mapped[str] = mapped_column(String, nullable=False)
+    # Роль, которая будет проставлена юзеру при регистрации по этому инвайту.
+    role: Mapped[str] = mapped_column(String, nullable=False, server_default="user")
     created_by_user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="RESTRICT"),

@@ -20,6 +20,7 @@ interface InviteCreateOut {
 export function InviteDialog() {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState('');
+  const [role, setRole] = useState<'user' | 'admin'>('user');
   const [submitting, setSubmitting] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -30,7 +31,7 @@ export function InviteDialog() {
     try {
       const res = await apiClient<InviteCreateOut>('/api/admin/invites', {
         method: 'POST',
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, role }),
       });
       // Backend may return absolute or path-only URL. If host present — use as-is, else prefix origin.
       const link = res.registration_url.startsWith('http')
@@ -54,6 +55,7 @@ export function InviteDialog() {
   function reset() {
     setOpen(false);
     setEmail('');
+    setRole('user');
     setGeneratedLink(null);
   }
 
@@ -79,8 +81,37 @@ export function InviteDialog() {
                 required
                 disabled={submitting}
               />
+            </div>
+            <div>
+              <Label>Роль</Label>
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRole('user')}
+                  disabled={submitting}
+                  className={`flex-1 border px-3 py-2 font-mono text-xs uppercase tracking-[0.18em] transition-colors ${
+                    role === 'user'
+                      ? 'border-[color:var(--color-text-primary)] bg-[color:var(--color-text-primary)] text-[color:var(--color-bg-primary)]'
+                      : 'border-[color:var(--color-rule-mute)] text-[color:var(--color-text-secondary)] hover:border-[color:var(--color-text-primary)]'
+                  }`}
+                >
+                  Пользователь
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRole('admin')}
+                  disabled={submitting}
+                  className={`flex-1 border px-3 py-2 font-mono text-xs uppercase tracking-[0.18em] transition-colors ${
+                    role === 'admin'
+                      ? 'border-[color:var(--color-accent)] bg-[color:var(--color-accent)] text-[color:var(--color-bg-primary)]'
+                      : 'border-[color:var(--color-rule-mute)] text-[color:var(--color-text-secondary)] hover:border-[color:var(--color-accent)]'
+                  }`}
+                >
+                  Админ
+                </button>
+              </div>
               <p className="mt-1 text-xs text-[color:var(--color-text-secondary)]">
-                Юзер регистрируется как обычный пользователь. Роль admin меняется потом руками в БД.
+                Юзер попадёт в каталог агентов. Админ дополнительно получит доступ к разделу /admin.
               </p>
             </div>
             <Button type="submit" className="w-full" disabled={submitting}>
