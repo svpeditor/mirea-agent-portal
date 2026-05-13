@@ -54,7 +54,7 @@ export default async function LandingPage() {
     <div className="min-h-screen bg-[color:var(--color-bg-primary)]">
       {/* ─── Masthead-style top stripe ─────────────────────────────────── */}
       <div className="border-b border-[color:var(--color-border-strong)]">
-        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-8 py-3">
+        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-4 sm:px-8 py-3">
           <span className="ed-meta">
             <span className="text-[color:var(--color-accent)]">§</span> Известия НУГ
             <span className="mx-2 text-[color:var(--color-text-tertiary)]">·</span>
@@ -67,7 +67,7 @@ export default async function LandingPage() {
       </div>
 
       {/* ─── HERO ─────────────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-[1400px] px-8 pt-16 pb-24">
+      <section className="mx-auto max-w-[1400px] px-4 sm:px-8 pt-16 pb-24">
         {/* Top-left lockup: numeral + label, like a journal article opening */}
         <div className="ed-anim-rise ed-d-1 mb-8 flex items-baseline gap-4">
           <span className="font-mono text-xs tracking-[0.25em] text-[color:var(--color-accent)]">
@@ -146,7 +146,7 @@ export default async function LandingPage() {
       </section>
 
       {/* ─── ARTICLES / agent index ───────────────────────────────────── */}
-      <section className="mx-auto max-w-[1400px] px-8 py-24">
+      <section className="mx-auto max-w-[1400px] px-4 sm:px-8 py-24">
         <div className="mb-12 grid gap-8 md:grid-cols-[1fr_2fr]">
           <div>
             <div className="ed-eyebrow mb-4 text-[color:var(--color-accent)]">
@@ -170,7 +170,7 @@ export default async function LandingPage() {
         {/* Articles list — like a journal TOC, not cards */}
         <div className="border-t-2 border-[color:var(--color-text-primary)]">
           {ARTICLES.length === 0 && (
-            <div className="ed-anim-rise px-8 py-16 text-center">
+            <div className="ed-anim-rise px-4 sm:px-8 py-16 text-center">
               <div className="ed-eyebrow mb-2 text-[color:var(--color-text-tertiary)]">
                 ВЫПУСК В ПЕЧАТИ
               </div>
@@ -217,7 +217,7 @@ export default async function LandingPage() {
 
       {/* ─── EDITORIAL FOOTNOTE ───────────────────────────────────────── */}
       <section className="border-t border-[color:var(--color-border-strong)] bg-[color:var(--color-bg-secondary)]">
-        <div className="mx-auto grid max-w-[1400px] gap-12 px-8 py-16 md:grid-cols-[2fr_1fr]">
+        <div className="mx-auto grid max-w-[1400px] gap-12 px-4 sm:px-8 py-16 md:grid-cols-[2fr_1fr]">
           <div>
             <div className="ed-eyebrow mb-3 text-[color:var(--color-accent)]">
               ПОЯСНЕНИЕ
@@ -282,7 +282,7 @@ export default async function LandingPage() {
 
       {/* ─── FOOTER ───────────────────────────────────────────────────── */}
       <footer className="border-t-4 border-[color:var(--color-text-primary)] bg-[color:var(--color-bg-primary)]">
-        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-8 py-6">
+        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-4 sm:px-8 py-6">
           <div className="ed-meta">
             <span className="text-[color:var(--color-accent)]">©</span> 2026 НУГ
             ЦТМО · МИРЭА · Москва

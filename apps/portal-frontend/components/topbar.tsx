@@ -49,9 +49,10 @@ export function Topbar({ user, showAdminLink }: TopbarProps) {
 
   return (
     <header className="border-b border-[color:var(--color-border-strong)] bg-[color:var(--color-bg-primary)]">
-      {/* Date/issue strip — like a newspaper top line */}
-      <div className="border-b border-[color:var(--color-rule-mute)]">
-        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-8 py-2">
+      {/* Date/issue strip — like a newspaper top line. На мобильном
+          компактная одна строка, без правой ISSN-меточки. */}
+      <div className="hidden border-b border-[color:var(--color-rule-mute)] sm:block">
+        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-4 sm:px-8 py-2">
           <span className="ed-meta">
             <span className="text-[color:var(--color-accent)]">§</span> Известия НУГ
             <span className="mx-2 text-[color:var(--color-text-tertiary)]">·</span>
@@ -64,7 +65,7 @@ export function Topbar({ user, showAdminLink }: TopbarProps) {
       </div>
 
       {/* Main masthead row */}
-      <div className="mx-auto flex max-w-[1400px] items-center justify-between px-8 py-5">
+      <div className="mx-auto flex max-w-[1400px] items-center justify-between px-4 sm:px-8 py-5">
         <div className="flex items-end gap-12">
           <Link href={'/agents' as Route} className="no-underline">
             <div className="flex items-baseline gap-3">

@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 export default function Forbidden() {
   return (
-    <main className="mx-auto flex min-h-[60vh] max-w-2xl flex-col justify-center px-8 py-20">
+    <main className="mx-auto flex min-h-[60vh] max-w-2xl flex-col justify-center px-4 sm:px-8 py-20">
       <div className="ed-eyebrow mb-3 text-[color:var(--color-error)]">403 · ДОСТУП ЗАКРЫТ</div>
       <h1 className="ed-display text-5xl md:text-6xl">
         Только для<br />

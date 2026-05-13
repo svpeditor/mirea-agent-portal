@@ -33,7 +33,7 @@ export default async function AdminCronsPage() {
   const activeAgents = agents.filter((a) => a.current_version_id);
 
   return (
-    <div className="mx-auto max-w-[1400px] px-8 py-12">
+    <div className="mx-auto max-w-[1400px] px-4 sm:px-8 py-6 sm:py-12">
       <div className="ed-anim-rise mb-8 flex items-end justify-between">
         <div>
           <div className="ed-eyebrow mb-2 text-[color:var(--color-accent)]">III. РЕДАКЦИЯ</div>

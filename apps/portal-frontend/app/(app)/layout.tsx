@@ -14,7 +14,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <Topbar user={user} showAdminLink={user.role === 'admin'} />
       <CommandPalette isAdmin={user.role === 'admin'} />
       {/* No inner max-w/padding here — каждая страница сама задаёт layout
-          под editorial-разворот (max-w-[1400px] px-8 py-X). */}
+          под editorial-разворот (max-w-[1400px] px-4 sm:px-8 py-X). */}
       <main>{children}</main>
     </div>
   );

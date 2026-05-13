@@ -53,7 +53,7 @@ export default async function AgentDetailPage({
   const llmModels = runtime.llm?.models ?? [];
 
   return (
-    <div className="mx-auto max-w-[1400px] px-8 py-10">
+    <div className="mx-auto max-w-[1400px] px-4 sm:px-8 py-10">
       {/* Breadcrumb / back link */}
       <Link
         href={'/agents' as Route}

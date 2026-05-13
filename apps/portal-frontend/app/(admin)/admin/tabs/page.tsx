@@ -14,7 +14,7 @@ export default async function AdminTabsPage() {
   const totalAgents = tabs.reduce((s, t) => s + t.agents_count, 0);
 
   return (
-    <div className="mx-auto max-w-[1400px] px-8 py-12">
+    <div className="mx-auto max-w-[1400px] px-4 sm:px-8 py-6 sm:py-12">
       <div className="ed-anim-rise mb-12 grid gap-8 md:grid-cols-[2fr_1fr]">
         <div>
           <div className="ed-eyebrow mb-3 text-[color:var(--color-accent)]">

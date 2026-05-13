@@ -31,7 +31,7 @@ export function EventFeed({ events }: { events: JobEventOut[] }) {
 
   if (visible.length === 0) {
     return (
-      <div className="border border-dashed border-[color:var(--color-rule-mute)] bg-[color:var(--color-bg-tertiary)] py-12 text-center">
+      <div className="border border-dashed border-[color:var(--color-rule-mute)] bg-[color:var(--color-bg-tertiary)] py-6 sm:py-12 text-center">
         <div className="ed-eyebrow mb-2 text-[color:var(--color-text-tertiary)]">
           ОЖИДАНИЕ
         </div>

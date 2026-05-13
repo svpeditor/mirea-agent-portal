@@ -15,7 +15,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <CommandPalette isAdmin />
       {/* Admin breadcrumb / masthead */}
       <div className="border-b border-[color:var(--color-rule-mute)] bg-[color:var(--color-bg-secondary)]">
-        <div className="mx-auto max-w-[1400px] px-8 py-3">
+        <div className="mx-auto max-w-[1400px] px-4 sm:px-8 py-3">
           <div className="ed-eyebrow text-[color:var(--color-accent)]">
             <span className="text-[color:var(--color-accent)]">§</span> РЕДАКЦИЯ ИЗВЕСТИЙ — служебная зона
           </div>

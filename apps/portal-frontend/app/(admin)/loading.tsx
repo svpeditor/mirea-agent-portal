@@ -1,6 +1,6 @@
 export default function Loading() {
   return (
-    <div className="mx-auto max-w-[1400px] px-8 py-12">
+    <div className="mx-auto max-w-[1400px] px-4 sm:px-8 py-6 sm:py-12">
       <div className="ed-anim-rise mb-10">
         <div className="ed-eyebrow mb-3 text-[color:var(--color-accent)]">
           РЕДАКЦИЯ ИЗВЕСТИЙ — загрузка…

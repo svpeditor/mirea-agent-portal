@@ -89,7 +89,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen flex-col bg-[color:var(--color-bg-primary)]">
       {/* Top thin meta strip */}
       <div className="border-b border-[color:var(--color-rule-mute)]">
-        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-8 py-3">
+        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-4 sm:px-8 py-3">
           <Link href={'/' as Route} className="ed-meta no-underline hover:text-[color:var(--color-accent)]">
             <span className="text-[color:var(--color-accent)]">§</span> Известия НУГ — на&nbsp;главную
           </Link>
@@ -103,7 +103,7 @@ export default function LoginPage() {
       <div className="flex-1">
         <div className="mx-auto grid min-h-[calc(100vh-200px)] max-w-[1400px] grid-cols-1 lg:grid-cols-[1.1fr_1fr]">
           {/* Left: editorial intro / brand */}
-          <aside className="flex flex-col justify-between border-[color:var(--color-rule-mute)] px-8 py-16 lg:border-r lg:px-16 lg:py-20">
+          <aside className="flex flex-col justify-between border-[color:var(--color-rule-mute)] px-4 sm:px-8 py-16 lg:border-r lg:px-16 lg:py-20">
             <div>
               <div className="ed-eyebrow ed-anim-rise ed-d-1 mb-6 text-[color:var(--color-accent)]">
                 АВТОРИЗАЦИЯ
@@ -140,7 +140,7 @@ export default function LoginPage() {
           </aside>
 
           {/* Right: form panel */}
-          <main className="flex items-center justify-center bg-[color:var(--color-bg-tertiary)] px-8 py-16 lg:px-16">
+          <main className="flex items-center justify-center bg-[color:var(--color-bg-tertiary)] px-4 sm:px-8 py-16 lg:px-16">
             <div className="w-full max-w-md">
               <div className="ed-anim-rise ed-d-3 mb-2 flex items-baseline justify-between">
                 <span className="ed-eyebrow">ФОРМА I</span>
@@ -180,7 +180,7 @@ export default function LoginPage() {
 
       {/* Footer */}
       <footer className="border-t border-[color:var(--color-border-strong)]">
-        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-8 py-3">
+        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-4 sm:px-8 py-3">
           <div className="ed-meta">
             <span className="text-[color:var(--color-accent)]">©</span> 2026 НУГ ЦТМО · МИРЭА
           </div>

@@ -63,11 +63,40 @@
   --radius-xl: 3px;
 }
 
+/* На узких экранах журнальная типографика «душит» вёрстку: text-6xl/7xl с
+   8rem/6.5rem вылезают за 375px вьюпорт. Tailwind v4 @theme inline инлайнит
+   значения compile-time, поэтому media-override через :root не работает —
+   перебиваем сами utility-классы. */
+@media (max-width: 640px) {
+  .text-3xl {
+    font-size: 1.75rem;
+  }
+  .text-4xl {
+    font-size: 2.25rem;
+  }
+  .text-5xl {
+    font-size: 2.75rem;
+  }
+  .text-6xl {
+    font-size: 3.25rem;
+  }
+  .text-7xl {
+    font-size: 3.75rem;
+  }
+}
+
 /* ───────────────────────────────────────────────────────────────────── */
 
 @layer base {
   * {
     box-sizing: border-box;
+  }
+
+  /* Защита от широкого контента (таблицы, длинные слова), который растягивает
+     блок-родителей и вызывает горизонтальный скролл всей страницы на мобильном. */
+  html,
+  body {
+    overflow-x: hidden;
   }
 
   html {
@@ -167,6 +196,8 @@
     font-weight: 700;
     letter-spacing: -0.035em;
     line-height: 0.9;
+    overflow-wrap: break-word;
+    hyphens: auto;
   }
 
   /* Section header — assertive, capitalized, stronger letter-spacing */

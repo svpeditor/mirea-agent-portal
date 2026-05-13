@@ -20,7 +20,7 @@ export function AdminSubnav() {
   const pathname = usePathname() || '';
   return (
     <nav className="border-b border-[color:var(--color-rule-mute)] bg-[color:var(--color-bg-secondary)]">
-      <div className="mx-auto max-w-[1400px] overflow-x-auto px-8">
+      <div className="mx-auto max-w-[1400px] overflow-x-auto px-4 sm:px-8">
         <ul className="flex items-baseline gap-1 whitespace-nowrap py-2">
           {LINKS.map((l) => {
             const active = pathname === l.href || pathname.startsWith(l.href + '/');

@@ -38,7 +38,7 @@ export default async function JobDetailPage({
   }
 
   return (
-    <div className="mx-auto max-w-[1400px] px-8 py-10">
+    <div className="mx-auto max-w-[1400px] px-4 sm:px-8 py-10">
       {/* Breadcrumb */}
       <Link
         href={'/jobs' as Route}

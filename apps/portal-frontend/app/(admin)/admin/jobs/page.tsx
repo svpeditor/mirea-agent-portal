@@ -22,7 +22,7 @@ export default async function AdminJobsPage({
   const lastId = jobs[jobs.length - 1]?.id ?? null;
 
   return (
-    <div className="mx-auto max-w-[1400px] px-8 py-12">
+    <div className="mx-auto max-w-[1400px] px-4 sm:px-8 py-6 sm:py-12">
       <JobsAutoRefresh hasActiveJobs={hasActiveJobs} />
       <div className="ed-anim-rise mb-10 grid gap-8 md:grid-cols-[2fr_1fr]">
         <div>

@@ -29,46 +29,49 @@ export function JobsTable({ jobs }: { jobs: JobListItemOut[] }) {
           <Link
             key={job.id}
             href={`/jobs/${job.id}` as Route}
-            className="group grid grid-cols-1 gap-4 border-b border-[color:var(--color-text-primary)] py-5 no-underline transition-all hover:bg-[color:var(--color-bg-tertiary)] hover:pl-3 md:grid-cols-[60px_1fr_140px_120px_100px_120px_40px] md:items-baseline md:py-4"
+            className="group flex flex-col gap-1 border-b border-[color:var(--color-text-primary)] py-3 no-underline transition-all hover:bg-[color:var(--color-bg-tertiary)] hover:pl-3 md:grid md:grid-cols-[60px_1fr_140px_120px_100px_120px_40px] md:items-baseline md:gap-4 md:py-4"
           >
-            {/* No */}
-            <span className="font-mono text-xs text-[color:var(--color-text-tertiary)] md:text-right">
-              {String(jobs.length - i).padStart(3, '0')}
-            </span>
+            {/* Mobile row 1: № + agent label + status badge (right) */}
+            <div className="flex items-center gap-3 md:contents">
+              <span className="font-mono text-xs text-[color:var(--color-text-tertiary)] md:text-right">
+                {String(jobs.length - i).padStart(3, '0')}
+              </span>
 
-            {/* Agent / ID */}
-            <span className="min-w-0 flex flex-col">
-              {agentLabel ? (
-                <span className="truncate font-serif text-base font-bold text-[color:var(--color-text-primary)] transition-colors group-hover:text-[color:var(--color-accent)]">
-                  {agentLabel}
+              {/* Agent / ID */}
+              <span className="min-w-0 flex flex-1 flex-col md:flex-none">
+                {agentLabel ? (
+                  <span className="truncate font-serif text-base font-bold text-[color:var(--color-text-primary)] transition-colors group-hover:text-[color:var(--color-accent)]">
+                    {agentLabel}
+                  </span>
+                ) : null}
+                <span className="hidden font-mono text-xs text-[color:var(--color-text-tertiary)] md:inline">
+                  {job.id.slice(0, 8)}–{job.id.slice(-4)}
                 </span>
-              ) : null}
-              <span className="font-mono text-xs text-[color:var(--color-text-tertiary)]">
+              </span>
+
+              {/* Status — справа на mobile, в своей колонке на desktop */}
+              <span className="shrink-0 md:order-none">
+                <JobStatusBadge status={job.status} />
+              </span>
+            </div>
+
+            {/* Mobile row 2: created · duration · cost · id (inline meta) */}
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-[color:var(--color-text-secondary)] md:contents">
+              <span className="font-serif text-sm italic md:text-[color:var(--color-text-secondary)]">
+                {formatRelativeTime(job.created_at)}
+              </span>
+              <span className="font-mono text-xs tabular-nums md:text-sm md:text-[color:var(--color-text-primary)]">
+                {formatDuration(job.started_at ?? job.created_at, job.finished_at)}
+              </span>
+              <span className="font-mono text-xs tabular-nums md:text-right md:text-sm md:text-[color:var(--color-text-secondary)]">
+                {cost !== null ? formatCurrency(cost) : '—'}
+              </span>
+              <span className="font-mono text-xs text-[color:var(--color-text-tertiary)] md:hidden">
                 {job.id.slice(0, 8)}–{job.id.slice(-4)}
               </span>
-            </span>
+            </div>
 
-            {/* Created */}
-            <span className="font-serif text-sm italic text-[color:var(--color-text-secondary)]">
-              {formatRelativeTime(job.created_at)}
-            </span>
-
-            {/* Duration */}
-            <span className="font-mono text-sm tabular-nums text-[color:var(--color-text-primary)]">
-              {formatDuration(job.started_at ?? job.created_at, job.finished_at)}
-            </span>
-
-            {/* Cost */}
-            <span className="font-mono text-sm tabular-nums text-right text-[color:var(--color-text-secondary)]">
-              {cost !== null ? formatCurrency(cost) : '—'}
-            </span>
-
-            {/* Status */}
-            <span>
-              <JobStatusBadge status={job.status} />
-            </span>
-
-            {/* Affordance */}
+            {/* Affordance — только desktop */}
             <span className="hidden items-center justify-end md:flex">
               <ArrowUpRight
                 className="h-4 w-4 text-[color:var(--color-text-tertiary)] transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-[color:var(--color-accent)]"

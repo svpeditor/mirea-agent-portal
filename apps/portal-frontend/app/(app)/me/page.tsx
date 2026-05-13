@@ -37,7 +37,7 @@ export default async function MePage({
   }).format(new Date(me.created_at));
 
   return (
-    <div className="mx-auto max-w-[1400px] px-8 py-12">
+    <div className="mx-auto max-w-[1400px] px-4 sm:px-8 py-6 sm:py-12">
       {/* Header — split: identity card on left, tabs on right */}
       <div className="ed-anim-rise mb-12 grid gap-8 lg:grid-cols-[1fr_2fr]">
         <div>
