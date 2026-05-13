@@ -65,12 +65,13 @@ async def register(
     if res.scalar_one_or_none() is not None:
         raise EmailAlreadyExists()
 
-    # 4) Создаём юзера
+    # 4) Создаём юзера. Роль берём из инвайта - админ при выдаче приглашения
+    # сам выбирает, в какой роли регистрировать гостя.
     user = User(
         email=payload.email.lower(),
         password_hash=hash_password(payload.password),
         display_name=payload.display_name,
-        role="user",
+        role=invite.role,
     )
     db.add(user)
     await db.flush()

@@ -55,9 +55,12 @@ async def create_invite(
     *,
     email: str,
     created_by: User,
+    role: str = "user",
 ) -> Invite:
     """Создать invite. Кидает EmailAlreadyRegistered / InviteAlreadyPending по правилам."""
     email = email.lower()
+    if role not in ("user", "admin"):
+        role = "user"
 
     # 1) email уже зарегистрирован?
     res = await db.execute(select(User).where(User.email == email))
@@ -79,6 +82,7 @@ async def create_invite(
     invite = Invite(
         token=secrets.token_urlsafe(32),
         email=email,
+        role=role,
         created_by_user_id=created_by.id,
         expires_at=datetime.now(UTC) + timedelta(days=INVITE_TTL_DAYS),
     )

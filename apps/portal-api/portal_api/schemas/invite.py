@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
 class InviteCreateIn(BaseModel):
     email: EmailStr
+    role: Literal["user", "admin"] = "user"
 
     @field_validator("email")
     @classmethod
@@ -28,12 +29,15 @@ class InviteOut(BaseModel):
     used_at: datetime | None
     used_by_user_id: uuid.UUID | None
     created_at: datetime
+    role: str = "user"
+    registration_url: str | None = None
 
 
 class InviteCreateOut(BaseModel):
     id: uuid.UUID
     token: str
     email: str
+    role: str
     expires_at: datetime
     registration_url: str
 

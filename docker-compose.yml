@@ -37,7 +37,8 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL}
       INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD}
-      ALLOWED_ORIGINS: '["http://localhost:3000","http://localhost:8000","http://100.106.180.108:3000"]'
+      ALLOWED_ORIGINS: '["http://localhost:3000","http://localhost:8000","http://100.106.180.108:3000","https://mac-ubuntu.taildfa6a8.ts.net"]'
+      PUBLIC_BASE_URL: "https://mac-ubuntu.taildfa6a8.ts.net"
       COOKIE_SECURE: "false"
       ENVIRONMENT: ${ENVIRONMENT:-dev}
       RELOAD: ${RELOAD:-}

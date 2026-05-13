@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 
 const LINKS: { href: Route; label: string }[] = [
   { href: '/admin/users' as Route, label: 'Пользователи' },
+  { href: '/admin/invites' as Route, label: 'Приглашения' },
   { href: '/admin/agents' as Route, label: 'Агенты' },
   { href: '/admin/tabs' as Route, label: 'Вкладки' },
   { href: '/admin/jobs' as Route, label: 'Запуски' },

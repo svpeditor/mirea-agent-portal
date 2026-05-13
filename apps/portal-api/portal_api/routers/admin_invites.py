@@ -2,6 +2,7 @@
 """Admin endpoints для invite-токенов."""
 from __future__ import annotations
 
+import os
 import uuid
 
 from fastapi import APIRouter, Depends, Query, Request, status
@@ -33,10 +34,13 @@ async def create_invite(
     admin: User = Depends(require_admin),
 ) -> InviteCreateOut:
     invite = await invite_service.create_invite(
-        db, email=payload.email, created_by=admin
+        db, email=payload.email, created_by=admin, role=payload.role
     )
-    base = str(request.base_url).rstrip("/")
-    registration_url = f"{base}/register?token={invite.token}"
+    # PUBLIC_BASE_URL переопределяет request.base_url, когда API стоит за обратным
+    # прокси (Next.js / Tailscale Funnel / nginx) - тогда base_url видит внутренний
+    # хост типа http://api:8000 и инвайт-ссылка получается нерабочей.
+    base = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/") or str(request.base_url).rstrip("/")
+    registration_url = f"{base}/register?invite={invite.token}"
 
     ip, ua = audit_service.request_meta(request)
     await audit_service.log_action(
@@ -54,6 +58,7 @@ async def create_invite(
         id=invite.id,
         token=invite.token,
         email=invite.email,
+        role=invite.role,
         expires_at=invite.expires_at,
         registration_url=registration_url,
     )
@@ -61,11 +66,18 @@ async def create_invite(
 
 @router.get("", response_model=InvitesListOut)
 async def list_invites(
+    request: Request,
     status_: str = Query(default="all", alias="status"),
     db: AsyncSession = Depends(get_db),
 ) -> InvitesListOut:
     invites = await invite_service.list_invites(db, status=status_)
-    return InvitesListOut(invites=[InviteOut.model_validate(i) for i in invites])
+    base = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/") or str(request.base_url).rstrip("/")
+    items = []
+    for inv in invites:
+        out = InviteOut.model_validate(inv)
+        out.registration_url = f"{base}/register?invite={inv.token}"
+        items.append(out)
+    return InvitesListOut(invites=items)
 
 
 @router.delete("/{invite_id}")
