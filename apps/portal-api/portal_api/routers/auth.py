@@ -173,5 +173,8 @@ async def invite_info(
     """Публичный endpoint для регистрации: проверка токена приглашения."""
     from portal_api.services import invite_service
 
-    invite = await invite_service.find_valid_invite(db, token)
-    return {"email": invite.email if invite else None}
+    # find_active_invite_by_token кидает InviteInvalid если токен не найден,
+    # использован или просрочен. Глобальный exception handler преобразует это
+    # в HTTP 400 с понятным кодом - фронт обработает.
+    invite = await invite_service.find_active_invite_by_token(db, token)
+    return {"email": invite.email}
