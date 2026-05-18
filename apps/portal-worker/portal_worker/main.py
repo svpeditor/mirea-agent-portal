@@ -8,6 +8,7 @@ from portal_worker.config import get_settings
 from portal_worker.core.logging import configure_logging
 from portal_worker.core.sentry import init_sentry
 from portal_worker.services.cron_scheduler import start_scheduler_thread
+from portal_worker.services.retention import start_retention_thread
 from portal_worker.tasks.build_agent import recover_orphaned_builds
 from portal_worker.tasks.run_job import recover_orphaned_jobs
 
@@ -26,6 +27,14 @@ def main() -> None:
     # Заодно если worker рестартанётся — thread поднимается заново.
     sync_url = _sync_db_url(str(settings.database_url))
     start_scheduler_thread(sync_url, conn)
+
+    # Retention: daemon-thread, раз в час чистит файлы старых job'ов.
+    start_retention_thread(
+        sync_url,
+        settings.file_store_local_root,
+        settings.job_file_retention_days,
+        settings.retention_poll_interval_seconds,
+    )
 
     worker = Worker(["builds", "jobs"], connection=conn)
     worker.work(with_scheduler=False)

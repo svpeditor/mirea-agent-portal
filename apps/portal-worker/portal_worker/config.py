@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     max_job_output_bytes: int = 1024**3
     job_timeout_seconds: int = 1800
     file_store_local_root: Path = Path("/var/portal-files")
+    # Срок хранения файлов завершённых job'ов (вход/выход). По истечении
+    # daemon-thread удаляет файлы с диска и строки job_files; сам job и его
+    # события/summary остаются как история.
+    job_file_retention_days: int = 10
+    retention_poll_interval_seconds: int = 3600
 
     # LLM proxy (1.2.4)
     llm_proxy_base_url: str = "http://api:8000/llm/v1"
