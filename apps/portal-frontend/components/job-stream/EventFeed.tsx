@@ -72,7 +72,7 @@ export function EventFeed({ events }: { events: JobEventOut[] }) {
             </span>
 
             {/* Message */}
-            <span className="flex-1 font-mono text-sm text-[color:var(--color-text-primary)]">
+            <span className="min-w-0 flex-1 break-words font-mono text-sm text-[color:var(--color-text-primary)]">
               {formatEventMessage(event)}
             </span>
           </li>

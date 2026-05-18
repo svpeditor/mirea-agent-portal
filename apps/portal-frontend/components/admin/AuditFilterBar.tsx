@@ -40,6 +40,7 @@ export function AuditFilterBar({ active }: Props) {
           <Link
             key={f.id || 'all'}
             href={hrefFor(f.id)}
+            scroll={false}
             className={`font-mono text-xs uppercase tracking-wider transition-colors no-underline ${
               isActive
                 ? 'border-b-2 border-[color:var(--color-accent)] text-[color:var(--color-accent)]'

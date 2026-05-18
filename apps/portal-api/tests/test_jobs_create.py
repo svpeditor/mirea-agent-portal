@@ -62,7 +62,8 @@ async def test_create_job_happy_path(user_client, db, admin_user, tmp_path) -> N
 
     try:
         await _ready_agent(db, admin_user, slug="happy")
-        files = {"inputs[a.txt]": ("a.txt", io.BytesIO(b"hello"), "text/plain")}
+        # Контракт: имя поля формы = id манифест-поля files.* (как шлёт фронт)
+        files = {"papers": ("a.txt", io.BytesIO(b"hello"), "text/plain")}
         data = {"params": json.dumps({"k": "v"})}
         resp = await user_client.post("/api/agents/happy/jobs", files=files, data=data)
         assert resp.status_code == 202
@@ -77,7 +78,7 @@ async def test_create_job_happy_path(user_client, db, admin_user, tmp_path) -> N
             select(JobFile).where(JobFile.job_id == job.id)
         )).scalars().all()
         assert len(files_rows) == 1
-        assert files_rows[0].filename == "a.txt"
+        assert files_rows[0].filename == "papers/a.txt"  # input/<field_id>/<file>
         assert files_rows[0].size_bytes == 5
 
         mock_enqueuer.enqueue_run.assert_called_once()
@@ -144,12 +145,20 @@ async def test_create_job_filename_traversal_400(user_client, db, admin_user, tm
 
     try:
         await _ready_agent(db, admin_user, slug="trav")
-        files = {"inputs[../etc/passwd]": ("x", io.BytesIO(b"x"), "text/plain")}
+        # traversal в имени файла
+        files = {"papers": ("../etc/passwd", io.BytesIO(b"x"), "text/plain")}
         resp = await user_client.post(
             "/api/agents/trav/jobs", files=files, data={"params": "{}"},
         )
         assert resp.status_code == 400
         assert resp.json()["error"]["code"] == "input_filename_invalid"
+        # traversal в id поля
+        files2 = {"../etc": ("a.txt", io.BytesIO(b"x"), "text/plain")}
+        resp2 = await user_client.post(
+            "/api/agents/trav/jobs", files=files2, data={"params": "{}"},
+        )
+        assert resp2.status_code == 400
+        assert resp2.json()["error"]["code"] == "input_filename_invalid"
     finally:
         app.dependency_overrides.pop(get_job_enqueuer, None)
         app.dependency_overrides.pop(get_settings, None)
@@ -167,7 +176,7 @@ async def test_create_job_inputs_too_large_413(user_client, db, admin_user, tmp_
 
     try:
         await _ready_agent(db, admin_user, slug="big")
-        files = {"inputs[a.txt]": ("a.txt", io.BytesIO(b"x" * 100), "text/plain")}
+        files = {"papers": ("a.txt", io.BytesIO(b"x" * 100), "text/plain")}
         resp = await user_client.post(
             "/api/agents/big/jobs", files=files, data={"params": "{}"},
         )

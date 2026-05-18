@@ -74,7 +74,7 @@ export function AgentsTable({ agents }: { agents: AgentRow[] }) {
       onRowClick={(a) => {
         const params = new URLSearchParams(searchParams);
         params.set('drawer', a.id);
-        router.push(`?${params.toString()}` as never);
+        router.push(`?${params.toString()}` as never, { scroll: false });
       }}
       emptyTitle="Агентов пока нет"
       emptyDescription="Создай первого через POST /api/admin/agents (CLI пока)."

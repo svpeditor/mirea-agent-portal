@@ -39,11 +39,23 @@ from portal_api.services.job_enqueue import JobEnqueuer
 router = APIRouter(tags=["jobs"])
 
 _FILENAME_RE = re.compile(r"^[A-Za-z0-9._\-/]+$")
-_INPUT_FIELD_RE = re.compile(r"^inputs\[(?P<name>.+)\]$")
+_FIELD_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 
 
 def _validate_input_filename(filename: str) -> None:
-    if filename.startswith("/") or ".." in filename or not _FILENAME_RE.match(filename):
+    if (
+        not filename
+        or filename.startswith("/")
+        or ".." in filename
+        or not _FILENAME_RE.fullmatch(filename)
+    ):
+        raise InputFilenameInvalidError()
+
+
+def _validate_field_id(field_id: str) -> None:
+    # id файлового поля манифеста (например `papers`). Без / и .. —
+    # станет компонентом пути input/<field_id>/<file>.
+    if not _FIELD_ID_RE.fullmatch(field_id):
         raise InputFilenameInvalidError()
 
 
@@ -65,16 +77,20 @@ async def create_job(
         raise ParamsInvalidJsonError() from exc
 
     form = await request.form()
-    inputs: list[tuple[str, UploadFile]] = []
+    # Контракт: фронт шлёт formData.append(<fieldId>, file), где fieldId —
+    # ключ манифест-поля files.* (например `papers`). Кладём в
+    # input/<fieldId>/<filename>, чтобы агент видел через
+    # agent.input_dir(fieldId). (Старый контракт inputs[<name>] был
+    # несовместим с фронтом и SDK — файлы молча терялись.)
+    inputs: list[tuple[str, str, UploadFile]] = []  # (field_id, filename, upload)
     for field, value in form.multi_items():
-        m = _INPUT_FIELD_RE.match(field)
-        if not m:
+        if field == "params" or not isinstance(value, UploadFile):
             continue
-        if not isinstance(value, UploadFile):
-            continue
-        filename = m.group("name")
+        field_id = field
+        _validate_field_id(field_id)
+        filename = value.filename or ""
         _validate_input_filename(filename)
-        inputs.append((filename, value))
+        inputs.append((field_id, filename, value))
 
     # Создать job (валидирует agent + version; quota check + ephemeral token при runtime.llm)
     job, ephemeral_plaintext = await job_service.create_job(
@@ -85,7 +101,7 @@ async def create_job(
     file_store = LocalDiskFileStore(root=settings.file_store_local_root)
     total_bytes = 0
     written_keys: list[str] = []
-    for filename, upload in inputs:
+    for field_id, filename, upload in inputs:
         async def _chunks(_u: UploadFile = upload) -> AsyncIterator[bytes]:
             while True:
                 chunk = await _u.read(64 * 1024)
@@ -93,7 +109,8 @@ async def create_job(
                     break
                 yield chunk
 
-        key = f"{job.id}/input/{filename}"
+        rel = f"{field_id}/{filename}"
+        key = f"{job.id}/input/{rel}"
         size, sha = await file_store.put(key, _chunks())
         written_keys.append(key)
         total_bytes += size
@@ -104,7 +121,7 @@ async def create_job(
             raise InputsTooLargeError()
         db.add(JobFile(
             id=uuid.uuid4(), job_id=job.id, kind="input",
-            filename=filename, content_type=upload.content_type,
+            filename=rel, content_type=upload.content_type,
             size_bytes=size, sha256=sha, storage_key=key,
         ))
 

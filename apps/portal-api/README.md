@@ -237,10 +237,13 @@ curl -s -c /tmp/cookies.txt -X POST "$BASE/api/auth/login" \
 ```bash
 echo "hello world" > /tmp/input.txt
 
+# echo не принимает файлы (files: {}). Для file-агентов имя form-поля =
+# id манифест-поля files.* (например `papers`), файлы складываются в
+# input/<field_id>/<filename>:
+#   -F 'papers=@/tmp/article1.pdf' -F 'papers=@/tmp/article2.pdf'
 curl -s -b /tmp/cookies.txt -X POST "$BASE/api/agents/echo/jobs" \
   -H "Origin: $ORIGIN" \
-  -F 'params={"k":"v"}' \
-  -F 'inputs[hello.txt]=@/tmp/input.txt' \
+  -F 'params={"message":"hello"}' \
   | tee /tmp/job.json
 ```
 

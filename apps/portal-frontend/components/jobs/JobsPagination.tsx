@@ -33,6 +33,7 @@ export function JobsPagination({ lastId, hasItems, hasMore }: Props) {
       {currentCursor ? (
         <Link
           href={makeHref(null)}
+          scroll={false}
           className="ed-stamp border-2 border-[color:var(--color-text-primary)] bg-[color:var(--color-bg-primary)] px-4 py-2 text-[color:var(--color-text-primary)] no-underline hover:bg-[color:var(--color-bg-tertiary)]"
         >
           <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2} />
@@ -44,6 +45,7 @@ export function JobsPagination({ lastId, hasItems, hasMore }: Props) {
       {hasMore && lastId ? (
         <Link
           href={makeHref(lastId)}
+          scroll={false}
           className="ed-stamp border-2 border-[color:var(--color-text-primary)] bg-[color:var(--color-bg-primary)] px-4 py-2 text-[color:var(--color-text-primary)] no-underline hover:bg-[color:var(--color-bg-tertiary)]"
         >
           Старше
