@@ -121,7 +121,7 @@ export function UsersTable({
       onRowClick={(u) => {
         const params = new URLSearchParams(searchParams);
         params.set('drawer', u.id);
-        router.push(`?${params.toString()}` as never);
+        router.push(`?${params.toString()}` as never, { scroll: false });
       }}
       emptyTitle="Пользователей пока нет"
       emptyDescription="Создай первого через «Создать инвайт»."

@@ -38,7 +38,7 @@ export function UsageDashboard({ summary, agents, selectedAgentId }: Props) {
     const params = new URLSearchParams(searchParams);
     if (value === 'all') params.delete('agent_id');
     else params.set('agent_id', value);
-    router.push(`?${params.toString()}` as never);
+    router.push(`?${params.toString()}` as never, { scroll: false });
   }
 
   return (

@@ -91,8 +91,8 @@ export default async function JobDetailPage({
       </header>
 
       {/* Two columns */}
-      <div className="grid gap-x-12 gap-y-8 lg:grid-cols-[1fr_360px]">
-        <div className="ed-anim-rise ed-d-3">
+      <div className="grid gap-x-12 gap-y-8 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="ed-anim-rise ed-d-3 min-w-0">
           <CancelJobButton jobId={job.id} status={job.status} />
           <JobStream jobId={job.id} initialEvents={initialEvents} initialStatus={job.status} />
         </div>
