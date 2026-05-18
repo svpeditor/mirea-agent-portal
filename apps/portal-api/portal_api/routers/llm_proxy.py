@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +12,7 @@ from portal_api.config import Settings, get_settings
 from portal_api.core.exceptions import NotImplementedAppError
 from portal_api.core.llm_auth import ephemeral_token_auth
 from portal_api.db import get_db
+from portal_api.services import llm_provider_router
 from portal_api.services import llm_proxy as svc
 from portal_api.services import llm_settings_service
 from portal_api.services.ephemeral_token import EphemeralTokenContext
@@ -31,17 +33,28 @@ async def chat_completions(
     settings: Settings = Depends(get_settings),
     pricing_cache: PricingCache = Depends(get_pricing_cache),
 ) -> Any:
-    # Ключ/base из БД (admin задал в UI) с fallback на env.
+    # Ключ/base из БД (admin задал в UI) с fallback на env; затем резолвим
+    # upstream-цель по provider_mode (openrouter vs прямое подключение).
     resolved = await llm_settings_service.get_effective(db, settings)
+    tgt = llm_provider_router.resolve(str(payload.get("model") or ""), resolved)
+    # Наблюдаемость: видно direct vs openrouter и тихий fallback
+    # (без секретов — только route + слаг модели).
+    structlog.get_logger().info(
+        "llm_upstream_route",
+        route=tgt.route,
+        model=payload.get("model"),
+        provider_mode=resolved.provider_mode,
+    )
     stream = bool(payload.get("stream", False))
     if stream:
         async def _gen():
             async for chunk in svc.chat_completions_stream(
                 db, ephemeral_ctx=ctx, request_body=payload,
                 pricing_cache=pricing_cache,
-                openrouter_api_key=resolved.openrouter_api_key,
-                openrouter_base_url=resolved.openrouter_base_url,
+                openrouter_api_key=tgt.api_key,
+                openrouter_base_url=tgt.base_url,
                 request_timeout_s=settings.llm_request_timeout_seconds,
+                upstream_model=tgt.upstream_model,
             ):
                 yield chunk
         return StreamingResponse(_gen(), media_type="text/event-stream")
@@ -49,9 +62,10 @@ async def chat_completions(
     result = await svc.chat_completions(
         db, ephemeral_ctx=ctx, request_body=payload, stream=False,
         pricing_cache=pricing_cache,
-        openrouter_api_key=resolved.openrouter_api_key,
-        openrouter_base_url=resolved.openrouter_base_url,
+        openrouter_api_key=tgt.api_key,
+        openrouter_base_url=tgt.base_url,
         request_timeout_s=settings.llm_request_timeout_seconds,
+        upstream_model=tgt.upstream_model,
     )
     if isinstance(result, dict) and "_proxied_status" in result:
         raise HTTPException(status_code=result["_proxied_status"], detail=result["_body"])
