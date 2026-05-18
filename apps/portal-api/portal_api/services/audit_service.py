@@ -135,3 +135,4 @@ class A:
     TAB_CREATE = "tab.create"
     TAB_UPDATE = "tab.update"
     TAB_DELETE = "tab.delete"
+    LLM_SETTINGS_UPDATE = "llm_settings.update"

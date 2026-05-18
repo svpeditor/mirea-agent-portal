@@ -12,6 +12,7 @@ from portal_api.core.exceptions import NotImplementedAppError
 from portal_api.core.llm_auth import ephemeral_token_auth
 from portal_api.db import get_db
 from portal_api.services import llm_proxy as svc
+from portal_api.services import llm_settings_service
 from portal_api.services.ephemeral_token import EphemeralTokenContext
 from portal_api.services.llm_pricing import PricingCache
 
@@ -30,14 +31,16 @@ async def chat_completions(
     settings: Settings = Depends(get_settings),
     pricing_cache: PricingCache = Depends(get_pricing_cache),
 ) -> Any:
+    # Ключ/base из БД (admin задал в UI) с fallback на env.
+    resolved = await llm_settings_service.get_effective(db, settings)
     stream = bool(payload.get("stream", False))
     if stream:
         async def _gen():
             async for chunk in svc.chat_completions_stream(
                 db, ephemeral_ctx=ctx, request_body=payload,
                 pricing_cache=pricing_cache,
-                openrouter_api_key=settings.openrouter_api_key.get_secret_value(),
-                openrouter_base_url=settings.openrouter_base_url,
+                openrouter_api_key=resolved.openrouter_api_key,
+                openrouter_base_url=resolved.openrouter_base_url,
                 request_timeout_s=settings.llm_request_timeout_seconds,
             ):
                 yield chunk
@@ -46,8 +49,8 @@ async def chat_completions(
     result = await svc.chat_completions(
         db, ephemeral_ctx=ctx, request_body=payload, stream=False,
         pricing_cache=pricing_cache,
-        openrouter_api_key=settings.openrouter_api_key.get_secret_value(),
-        openrouter_base_url=settings.openrouter_base_url,
+        openrouter_api_key=resolved.openrouter_api_key,
+        openrouter_base_url=resolved.openrouter_base_url,
         request_timeout_s=settings.llm_request_timeout_seconds,
     )
     if isinstance(result, dict) and "_proxied_status" in result:

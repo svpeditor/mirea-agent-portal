@@ -12,6 +12,7 @@ const LINKS: { href: Route; label: string }[] = [
   { href: '/admin/jobs' as Route, label: 'Запуски' },
   { href: '/admin/crons' as Route, label: 'Расписания' },
   { href: '/admin/usage' as Route, label: 'LLM-usage' },
+  { href: '/admin/llm-settings' as Route, label: 'Ключи LLM' },
   { href: '/admin/audit' as Route, label: 'Аудит' },
   { href: '/admin/system' as Route, label: 'Система' },
 ];
