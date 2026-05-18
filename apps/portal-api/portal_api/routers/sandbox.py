@@ -13,7 +13,7 @@ from urllib.parse import quote_plus
 
 import feedparser  # type: ignore[import-untyped]
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from portal_api.core.llm_auth import ephemeral_token_auth
 from portal_api.services.ephemeral_token import EphemeralTokenContext
@@ -32,6 +32,14 @@ CROSSREF_UA = "mirea-agent-portal/1.0 (mailto:noreply@mirea.ru)"
 S2_API = "https://api.semanticscholar.org/graph/v1/paper/search"
 S2_TIMEOUT_S = 30.0
 S2_FIELDS = "paperId,title,abstract,authors,year,venue,citationCount,referenceCount,externalIds,url"
+
+ARXIV_PDF_BASE = "https://arxiv.org/pdf"
+ARXIV_PDF_TIMEOUT_S = 60.0
+MAX_PDF_BYTES = 25 * 1024 * 1024  # arXiv PDF почти всегда < 5 МБ; 25 — запас
+# new-style `2401.01234`(+`vN`) или old-style `math/0501001` / `cs.AI/0501001`(+`vN`)
+_ARXIV_ID_RE = re.compile(
+    r"\A(\d{4}\.\d{4,5}(v\d+)?|[a-z\-]+(\.[A-Z]{2})?/\d{7}(v\d+)?)\Z"
+)
 
 
 @router.get("/arxiv")
@@ -109,6 +117,77 @@ async def arxiv_search(
         "total": len(papers),
         "papers": papers,
     }
+
+
+@router.get("/arxiv-pdf")
+async def arxiv_pdf(
+    arxiv_id: str = Query(..., min_length=1, max_length=40),
+    _ctx: EphemeralTokenContext = Depends(ephemeral_token_auth),
+) -> Response:
+    """Скачать PDF статьи arXiv через allowlist-прокси.
+
+    Агент в internal-сети без интернета — это единственный способ забрать
+    сам файл. Жёстко: только валидный arxiv_id, только arxiv.org/pdf,
+    content-type обязан быть PDF, лимит размера.
+    """
+    aid = arxiv_id.removeprefix("arxiv:").strip()
+    if not _ARXIV_ID_RE.match(aid):
+        raise HTTPException(
+            status_code=422,
+            detail={"error": {"code": "ARXIV_PDF_BAD_ID",
+                              "message": f"невалидный arxiv_id: {arxiv_id!r}"}},
+        )
+    url = f"{ARXIV_PDF_BASE}/{aid}.pdf"
+    too_large = HTTPException(
+        status_code=502,
+        detail={"error": {"code": "ARXIV_PDF_TOO_LARGE",
+                          "message": f"PDF превышает лимит {MAX_PDF_BYTES} байт"}},
+    )
+    try:
+        async with httpx.AsyncClient(
+            timeout=ARXIV_PDF_TIMEOUT_S, follow_redirects=True,
+        ) as client, client.stream("GET", url) as r:
+            if r.status_code != 200:
+                raise HTTPException(
+                    status_code=502,
+                    detail={"error": {"code": "ARXIV_PDF_BAD_STATUS",
+                                      "message": f"arXiv ответил {r.status_code}"}},
+                )
+            clen = r.headers.get("content-length", "")
+            if clen.isdigit() and int(clen) > MAX_PDF_BYTES:
+                raise too_large
+            ctype = r.headers.get("content-type", "")
+            # Стримим с ранним обрывом — не материализуем гигантский ответ в RAM.
+            buf = bytearray()
+            async for chunk in r.aiter_bytes():
+                buf += chunk
+                if len(buf) > MAX_PDF_BYTES:
+                    raise too_large
+            body = bytes(buf)
+    except httpx.TimeoutException as e:
+        raise HTTPException(
+            status_code=504,
+            detail={"error": {"code": "ARXIV_PDF_TIMEOUT", "message": str(e)}},
+        ) from e
+    except httpx.HTTPError as e:
+        raise HTTPException(
+            status_code=502,
+            detail={"error": {"code": "ARXIV_PDF_UNAVAILABLE", "message": str(e)}},
+        ) from e
+
+    if "application/pdf" not in ctype and not body[:5].startswith(b"%PDF"):
+        raise HTTPException(
+            status_code=502,
+            detail={"error": {"code": "ARXIV_PDF_NOT_PDF",
+                              "message": f"ожидался PDF, получен {ctype or 'unknown'}"}},
+        )
+
+    safe = re.sub(r"[^A-Za-z0-9._-]", "_", aid)
+    return Response(
+        content=body,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{safe}.pdf"'},
+    )
 
 
 @router.get("/crossref")
