@@ -76,8 +76,9 @@ export function LlmSettingsForm({ initial }: { initial: LlmSettingsMasked }) {
           <option value="direct">Напрямую к каждому провайдеру (нужны ключи ниже)</option>
         </select>
         <p className="text-xs text-[color:var(--color-text-tertiary)]">
-          «Напрямую» полноценно подключается на следующем этапе; Anthropic
-          в этом режиме всё равно идёт через OpenRouter.
+          «Напрямую»: OpenAI / xAI (Grok) / Google идут прямо к провайдеру
+          по ключу ниже (если ключ задан, иначе fallback на OpenRouter).
+          Anthropic и DeepSeek в этом режиме всё равно через OpenRouter.
         </p>
       </div>
 

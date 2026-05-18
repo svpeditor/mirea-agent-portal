@@ -103,8 +103,19 @@ async def chat_completions(
     openrouter_api_key: str,
     openrouter_base_url: str,
     request_timeout_s: float,
+    upstream_model: str | None = None,
 ) -> dict[str, Any]:
-    """Non-streaming chat completion. Streaming → chat_completions_stream (Task 9)."""
+    """Non-streaming chat completion. Streaming → chat_completions_stream (Task 9).
+
+    ВНИМАНИЕ: `openrouter_api_key`/`openrouter_base_url` исторически так
+    названы, но при provider_mode=direct несут ключ/base КОНКРЕТНОГО
+    провайдера (см. llm_provider_router.resolve). Не логировать как
+    «openrouter».
+
+    upstream_model: если задано (direct-режим), модель в теле запроса
+    подменяется на native-id провайдера; whitelist/pricing/лог — по
+    исходному слагу `model`.
+    """
     if stream:
         raise RuntimeError("use chat_completions_stream for stream=True")
 
@@ -148,11 +159,15 @@ async def chat_completions(
 
     start = time.monotonic()
     try:
+        upstream_body = (
+            request_body if not upstream_model
+            else {**request_body, "model": upstream_model}
+        )
         async with httpx.AsyncClient(timeout=request_timeout_s) as client:
             resp = await client.post(
                 f"{openrouter_base_url}/chat/completions",
                 headers={"Authorization": f"Bearer {openrouter_api_key}"},
-                json=request_body,
+                json=upstream_body,
             )
     except httpx.TimeoutException:
         latency = int((time.monotonic() - start) * 1000)
@@ -217,8 +232,15 @@ async def chat_completions_stream(
     openrouter_api_key: str,
     openrouter_base_url: str,
     request_timeout_s: float,
+    upstream_model: str | None = None,
 ):
-    """Async generator: streams SSE chunks к клиенту, парсит usage в последнем chunk."""
+    """Async generator: streams SSE chunks к клиенту, парсит usage в последнем chunk.
+
+    ВНИМАНИЕ: `openrouter_*` параметры при provider_mode=direct несут
+    ключ/base конкретного провайдера (см. llm_provider_router).
+
+    upstream_model — см. chat_completions (direct-режим: native-id в теле,
+    исходный слаг для whitelist/pricing/лога)."""
     model = request_body.get("model")
     if not model:
         raise ModelNotInWhitelistError("request body has no 'model' field")
@@ -259,6 +281,8 @@ async def chat_completions_stream(
 
     forwarded_body = dict(request_body)
     forwarded_body["stream"] = True
+    if upstream_model:
+        forwarded_body["model"] = upstream_model
     stream_options = dict(forwarded_body.get("stream_options") or {})
     stream_options["include_usage"] = True
     forwarded_body["stream_options"] = stream_options
