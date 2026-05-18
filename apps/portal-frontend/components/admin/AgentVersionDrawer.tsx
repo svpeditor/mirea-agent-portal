@@ -23,6 +23,11 @@ interface AgentVersion {
   is_current: boolean;
 }
 
+interface TabOption {
+  id: string;
+  name: string;
+}
+
 interface Props {
   agentId: string;
   agentName: string;
@@ -30,13 +35,55 @@ interface Props {
   gitUrl: string;
   enabled: boolean;
   costCapUsd: string | null;
+  tabId: string;
+  tabs: TabOption[];
+  icon: string | null;
+  shortDescription: string;
 }
 
-export function AgentVersionDrawer({ agentId, agentName, agentSlug, gitUrl, enabled, costCapUsd }: Props) {
+export function AgentVersionDrawer({
+  agentId, agentName, agentSlug, gitUrl, enabled, costCapUsd,
+  tabId, tabs, icon, shortDescription,
+}: Props) {
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [capInput, setCapInput] = useState(costCapUsd ?? '');
   const [savingCap, setSavingCap] = useState(false);
+  const [cardName, setCardName] = useState(agentName);
+  const [cardIcon, setCardIcon] = useState(icon ?? '');
+  const [cardDesc, setCardDesc] = useState(shortDescription);
+  const [cardTab, setCardTab] = useState(tabId);
+  const [savingCard, setSavingCard] = useState(false);
+  const cardDirty =
+    cardName !== agentName ||
+    cardIcon !== (icon ?? '') ||
+    cardDesc !== shortDescription ||
+    cardTab !== tabId;
+
+  async function saveCard() {
+    if (!cardName.trim() || !cardDesc.trim()) {
+      toast.error('Имя и описание не могут быть пустыми');
+      return;
+    }
+    setSavingCard(true);
+    try {
+      await apiClient(`/api/admin/agents/${agentId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: cardName.trim(),
+          icon: cardIcon.trim() === '' ? null : cardIcon.trim(),
+          short_description: cardDesc.trim(),
+          tab_id: cardTab,
+        }),
+      });
+      toast.success('Карточка агента сохранена');
+      router.refresh();
+    } catch (err) {
+      toast.error(mapApiError(err));
+    } finally {
+      setSavingCard(false);
+    }
+  }
 
   const { data: versions, refetch } = useQuery({
     queryKey: ['agent-versions', agentId],
@@ -115,6 +162,53 @@ export function AgentVersionDrawer({ agentId, agentName, agentSlug, gitUrl, enab
           <div className="text-xs text-[color:var(--color-text-tertiary)]">
             опциональный потолок на стоимость одного запуска этого агента, дополняет per-job квоту юзера
           </div>
+        </div>
+
+        <div className="space-y-3 border-t border-[color:var(--color-text-primary)] pt-4">
+          <h3 className="font-serif text-lg">Карточка агента</h3>
+          <label className="block text-sm">
+            <span className="text-[color:var(--color-text-secondary)]">Категория</span>
+            <select
+              value={cardTab}
+              onChange={(e) => setCardTab(e.target.value)}
+              className="mt-1 block w-full border border-[color:var(--color-text-primary)] bg-[color:var(--color-bg-primary)] px-2 py-1 text-sm"
+            >
+              {tabs.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          </label>
+          <div className="flex gap-2">
+            <label className="block w-20 text-sm">
+              <span className="text-[color:var(--color-text-secondary)]">Иконка</span>
+              <input
+                value={cardIcon}
+                onChange={(e) => setCardIcon(e.target.value)}
+                placeholder="🔬"
+                className="mt-1 block w-full border border-[color:var(--color-text-primary)] bg-[color:var(--color-bg-primary)] px-2 py-1 text-center text-sm"
+              />
+            </label>
+            <label className="block flex-1 text-sm">
+              <span className="text-[color:var(--color-text-secondary)]">Название</span>
+              <input
+                value={cardName}
+                onChange={(e) => setCardName(e.target.value)}
+                className="mt-1 block w-full border border-[color:var(--color-text-primary)] bg-[color:var(--color-bg-primary)] px-2 py-1 text-sm"
+              />
+            </label>
+          </div>
+          <label className="block text-sm">
+            <span className="text-[color:var(--color-text-secondary)]">Краткое описание</span>
+            <textarea
+              value={cardDesc}
+              onChange={(e) => setCardDesc(e.target.value)}
+              rows={3}
+              className="mt-1 block w-full border border-[color:var(--color-text-primary)] bg-[color:var(--color-bg-primary)] px-2 py-1 text-sm"
+            />
+          </label>
+          <Button size="sm" onClick={saveCard} disabled={savingCard || !cardDirty}>
+            {savingCard ? 'Сохраняю...' : 'Сохранить карточку'}
+          </Button>
         </div>
 
         <div>

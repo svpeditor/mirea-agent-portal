@@ -254,13 +254,18 @@ async def update_agent(
     tab_id: uuid.UUID | None = None,
     enabled: bool | None = None,
     cost_cap_usd: "Decimal | None | EllipsisType" = ...,
+    name: str | None = None,
+    icon: "str | None | EllipsisType" = ...,
+    short_description: str | None = None,
 ) -> Agent:
-    """Изменить tab_id, enabled и/или cost_cap_usd у агента.
+    """Изменить tab_id, enabled, cost_cap_usd и/или карточку агента.
 
     cost_cap_usd:
         - Ellipsis (default) — поле не меняется.
         - None — кэп снимается (null в БД).
         - Decimal — устанавливается.
+    name/short_description: None — не меняется; строка — устанавливается.
+    icon: Ellipsis — не меняется; None — очищается; строка — устанавливается.
 
     Toggle `enabled=True` допустим только если у агента есть `current_version_id`.
     """
@@ -276,6 +281,12 @@ async def update_agent(
         agent.enabled = enabled
     if cost_cap_usd is not ...:
         agent.cost_cap_usd = cost_cap_usd
+    if name is not None:
+        agent.name = name
+    if short_description is not None:
+        agent.short_description = short_description
+    if icon is not ...:
+        agent.icon = icon
     agent.updated_at = datetime.now(UTC)
     await session.flush()
     return agent

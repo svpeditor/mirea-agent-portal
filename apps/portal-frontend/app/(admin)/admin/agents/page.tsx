@@ -91,12 +91,17 @@ export default async function AdminAgentsPage({
 
       {selected && (
         <AgentVersionDrawer
+          key={selected.id}
           agentId={selected.id}
           agentName={selected.name}
           agentSlug={selected.slug}
           gitUrl={selected.git_url}
           enabled={selected.enabled}
           costCapUsd={selected.cost_cap_usd}
+          tabId={selected.tab_id}
+          tabs={tabs.map((t) => ({ id: t.id, name: t.name }))}
+          icon={selected.icon}
+          shortDescription={selected.short_description}
         />
       )}
     </div>
