@@ -73,6 +73,7 @@ def db_with_schema(settings_env: None, pg_container: PostgresContainer) -> Itera
                 display_name TEXT NOT NULL,
                 role TEXT NOT NULL DEFAULT 'user',
                 monthly_budget_usd NUMERIC(10,2) NOT NULL DEFAULT 5.00,
+                notify_on_job_finish BOOLEAN NOT NULL DEFAULT false,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
             )
