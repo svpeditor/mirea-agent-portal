@@ -122,6 +122,28 @@ def run_job(payload: dict | str) -> None:
                     shutil.copytree(src, dst)
                 else:
                     shutil.copy2(src, dst)
+        # Материализовать ПУСТЫЕ папки для всех declared file-инпутов (иначе
+        # agent.input_dir(name) кидает голый FileNotFoundError ДО friendly-
+        # гарда) И серверно проверить required — гарантированно понятная
+        # ошибка вместо немого output_missing, не завися от кода агента.
+        missing_required: list[str] = []
+        for fname, ffield in manifest.files.items():
+            # anti-traversal: manifest-ключ не должен убегать из input_dir
+            if "/" in fname or fname in ("..", ".") or fname.startswith("."):
+                _finalize(session_factory, vid, status="failed",
+                          error_code="bad_manifest",
+                          error_msg=f"некорректный ключ files: {fname!r}")
+                return
+            d = input_dir / fname
+            d.mkdir(parents=True, exist_ok=True)
+            if ffield.required and not any(d.iterdir()):
+                missing_required.append(ffield.label or fname)
+        if missing_required:
+            _finalize(session_factory, vid, status="failed",
+                      error_code="input_missing",
+                      error_msg="Не загружены обязательные файлы: "
+                                + ", ".join(missing_required))
+            return
         params_path = workdir / "params.json"
         params_path.write_text(json.dumps(params))
 
@@ -152,7 +174,7 @@ def run_job(payload: dict | str) -> None:
             timeout_s = settings.job_timeout_seconds
 
         try:
-            exit_code = run_agent_container(
+            run = run_agent_container(
                 image_tag=image_tag,
                 input_dir=input_dir,
                 output_dir=output_dir,
@@ -177,13 +199,27 @@ def run_job(payload: dict | str) -> None:
                       error_code="timeout", error_msg=str(exc))
             return
 
+        exit_code = run.exit_code
+        # Агент упал (ненулевой код) — отдаём stderr-хвост, а НЕ немой
+        # output_missing. Без этого «при запуске выдаёт ошибки» неотлаживаемо.
+        if exit_code != 0:
+            msg = f"агент завершился с кодом {exit_code}"
+            if run.stderr_tail:
+                msg += f"\n--- stderr (хвост) ---\n{run.stderr_tail}"
+            _finalize(session_factory, vid, status="failed",
+                      error_code="agent_crashed", error_msg=msg)
+            return
+
         # 4. Verify outputs объявленных в manifest
         declared = [o.filename for o in manifest.outputs]
         try:
             verify_outputs(output_dir, declared_filenames=declared)
         except OutputMissingError as exc:
+            msg = str(exc)
+            if run.stderr_tail:
+                msg += f"\n--- stderr (хвост) ---\n{run.stderr_tail}"
             _finalize(session_factory, vid, status="failed",
-                      error_code="output_missing", error_msg=str(exc))
+                      error_code="output_missing", error_msg=msg)
             return
 
         # 5. Просканировать ВСЕ файлы → FileStore output + INSERT job_files  # noqa: RUF003

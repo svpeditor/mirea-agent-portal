@@ -62,7 +62,7 @@ def test_run_streams_events(echo_event_image: str, tmp_path: Path) -> None:
     params_path.write_text("{}")
 
     events: list[dict[str, Any]] = []
-    exit_code = run_agent_container(
+    run = run_agent_container(
         image_tag=echo_event_image,
         input_dir=input_dir, output_dir=output_dir, params_path=params_path,
         memory_mb=128, cpu_cores=1.0, timeout_seconds=60,
@@ -70,9 +70,45 @@ def test_run_streams_events(echo_event_image: str, tmp_path: Path) -> None:
         on_event=events.append,
         labels={"portal-test": "1"},
     )
-    assert exit_code == 0
+    assert run.exit_code == 0
     types = [e["type"] for e in events]
     assert types == ["started", "progress", "result"]
+
+
+def test_run_captures_stderr_tail_on_crash(tmp_path: Path) -> None:
+    """Агент пишет traceback в stderr и падает → RunResult.stderr_tail
+    содержит его, exit_code != 0 (диагностируемость 'выдаёт ошибки')."""
+    from portal_worker.runner.docker_runner import run_agent_container
+
+    tag = "portal-test-crash:latest"
+    agent_py = (
+        "import sys\n"
+        "print('partial stdout', flush=True)\n"
+        "sys.stderr.write('BOOM unique-marker-9921 traceback\\n')\n"
+        "sys.stderr.flush()\n"
+        "raise SystemExit(3)\n"
+    )
+    _build_test_image(tag, """
+FROM python:3.12-slim
+WORKDIR /agent
+COPY agent.py /agent/agent.py
+ENTRYPOINT ["python", "/agent/agent.py"]
+""", tmp_path, extra_files={"agent.py": agent_py})
+    try:
+        in_d = tmp_path / "i"; in_d.mkdir()
+        out_d = tmp_path / "o"; out_d.mkdir()
+        pp = tmp_path / "p.json"; pp.write_text("{}")
+        run = run_agent_container(
+            image_tag=tag,
+            input_dir=in_d, output_dir=out_d, params_path=pp,
+            memory_mb=128, cpu_cores=1.0, timeout_seconds=60,
+            cancel_check=lambda: False, on_event=lambda _e: None,
+            labels={"portal-test": "1"},
+        )
+        assert run.exit_code == 3
+        assert "unique-marker-9921" in run.stderr_tail
+    finally:
+        subprocess.run(["docker", "rmi", "-f", tag], check=False, capture_output=True)
 
 
 def test_run_timeout_triggers_sigterm(tmp_path: Path) -> None:

@@ -131,3 +131,75 @@ def test_run_job_failed_finalize_on_run_exception(
     assert row.status == "failed"
     assert row.error_code == "docker_error"
     assert "oops" in row.error_msg
+
+
+def test_run_job_agent_crashed_surfaces_stderr(
+    settings_env: None, db_with_schema: None, pg_container: PostgresContainer,
+) -> None:
+    """Агент упал (exit!=0): job=failed, error_code=agent_crashed,
+    stderr-хвост виден — НЕ немой output_missing."""
+    from portal_worker.runner.docker_runner import RunResult
+    from portal_worker.tasks import run_job as mod
+    jid = _insert_job(pg_container, status="queued", sha="e" * 40)
+
+    with patch.object(mod, "run_agent_container",
+                      return_value=RunResult(exit_code=2,
+                                             stderr_tail="Traceback ... BOOM_4477")):
+        mod.run_job(str(jid))
+
+    eng = create_engine(pg_container.get_connection_url())
+    with eng.connect() as c:
+        row = c.execute(text(
+            "SELECT status, error_code, error_msg FROM jobs WHERE id=:vid"
+        ), {"vid": jid}).one()
+    eng.dispose()
+    assert row.status == "failed"
+    assert row.error_code == "agent_crashed"
+    assert "BOOM_4477" in row.error_msg
+    assert "кодом 2" in row.error_msg
+
+
+def test_run_job_input_missing_when_required_file_not_uploaded(
+    settings_env: None, db_with_schema: None, pg_container: PostgresContainer,
+) -> None:
+    """Сценарий препода: folder-агент запущен без файлов. Серверная
+    проверка required → понятный input_missing ДО запуска контейнера,
+    не немой output_missing."""
+    from portal_worker.tasks import run_job as mod
+    manifest = {
+        "id": "x", "name": "X", "version": "0.1.0",
+        "category": "научная-работа", "short_description": "d",
+        "inputs": {},
+        "files": {"papers": {"type": "folder", "label": "Папка статей",
+                              "required": True}},
+        "outputs": [{"id": "o", "type": "any", "label": "o", "filename": "out.txt"}],
+        "runtime": {
+            "docker": {"base_image": "python:3.12-slim", "setup": [],
+                       "entrypoint": ["python", "agent.py"]},
+            "llm": {"provider": "openrouter", "models": []},
+            "limits": {"max_runtime_minutes": 1, "max_memory_mb": 128,
+                       "max_cpu_cores": 1},
+        },
+    }
+    jid = _insert_job(pg_container, status="queued", sha="f" * 40,
+                      manifest=manifest)
+
+    called = {"n": 0}
+
+    def _should_not_run(**_kw):
+        called["n"] += 1
+        raise AssertionError("контейнер не должен запускаться")
+
+    with patch.object(mod, "run_agent_container", _should_not_run):
+        mod.run_job(str(jid))
+
+    assert called["n"] == 0
+    eng = create_engine(pg_container.get_connection_url())
+    with eng.connect() as c:
+        row = c.execute(text(
+            "SELECT status, error_code, error_msg FROM jobs WHERE id=:v"
+        ), {"v": jid}).one()
+    eng.dispose()
+    assert row.status == "failed"
+    assert row.error_code == "input_missing"
+    assert "Папка статей" in row.error_msg

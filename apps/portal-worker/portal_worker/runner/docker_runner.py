@@ -5,6 +5,7 @@ import contextlib
 import threading
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +14,22 @@ import structlog
 
 from portal_worker.runner.jsonl_parser import parse_jsonl_stream
 from portal_worker.runner.llm_runtime_config import LlmRuntimeConfig
+
+_STDERR_TAIL_CHARS = 4000
+
+
+@dataclass
+class RunResult:
+    """Итог запуска контейнера агента."""
+
+    exit_code: int
+    stderr_tail: str = ""  # хвост stderr — для диагностики падений агента
+
+
+def _tail(raw: bytes | str, limit: int = _STDERR_TAIL_CHARS) -> str:
+    s = raw.decode("utf-8", "replace") if isinstance(raw, bytes) else raw
+    s = s.strip()
+    return s[-limit:] if len(s) > limit else s
 
 
 class RunTimeout(Exception):  # noqa: N818
@@ -36,8 +53,8 @@ def run_agent_container(
     on_event: Callable[[dict[str, Any]], None],
     labels: dict[str, str],
     llm_config: LlmRuntimeConfig | None = None,
-) -> int:
-    """Запустить контейнер, парсить stdout, ёмитить events. Возвращает exit_code.
+) -> RunResult:
+    """Запустить контейнер, парсить stdout, ёмитить events.
 
     raises:
         RunTimeout — если контейнер не завершился за timeout_seconds.
@@ -106,6 +123,8 @@ def run_agent_container(
     watcher = threading.Thread(target=_watcher, daemon=True)
     watcher.start()
 
+    stderr_tail = ""
+    exit_code = -1  # на случай не-cancel/timeout исключения до wait()
     try:
         # Stream stdout (line-buffered byte chunks)
         for event in parse_jsonl_stream(
@@ -117,6 +136,12 @@ def run_agent_container(
         # Дождаться exit
         result = container.wait(timeout=timeout_seconds + 30)
         exit_code = int(result.get("StatusCode", -1))
+        # Захватить stderr ДО remove — иначе traceback упавшего агента
+        # теряется навсегда и job фейлится с немым output_missing.
+        with contextlib.suppress(Exception):
+            stderr_tail = _tail(
+                container.logs(stdout=False, stderr=True, timestamps=False)
+            )
     finally:
         with contextlib.suppress(Exception):
             container.remove(force=True)
@@ -126,4 +151,4 @@ def run_agent_container(
         raise RunCancelled()
     if timed_out:
         raise RunTimeout(f"timeout after {timeout_seconds}s")
-    return exit_code
+    return RunResult(exit_code=exit_code, stderr_tail=stderr_tail)

@@ -4,6 +4,8 @@ from __future__ import annotations
 import json
 from unittest.mock import patch
 
+from portal_worker.runner.docker_runner import RunResult
+
 from sqlalchemy import create_engine, text
 from testcontainers.postgres import PostgresContainer
 
@@ -109,7 +111,7 @@ def test_run_job_with_llm_passes_config_and_revokes(
 
     def fake_run_agent_container(**kwargs):
         captured_kwargs.update(kwargs)
-        return 0
+        return RunResult(0)
 
     def fake_revoke(job_id):
         revoke_calls.append(job_id)
@@ -144,7 +146,7 @@ def test_run_job_without_llm_no_config_no_revoke(
 
     def fake_run_agent_container(**kwargs):
         captured_kwargs.update(kwargs)
-        return 0
+        return RunResult(0)
 
     def fake_revoke(job_id):
         revoke_calls.append(job_id)
