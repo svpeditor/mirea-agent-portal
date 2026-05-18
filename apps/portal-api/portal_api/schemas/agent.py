@@ -70,6 +70,14 @@ class AgentCreateIn(BaseModel):
 
 
 class AgentUpdateIn(BaseModel):
+    # strip whitespace: иначе name="   " проходит min_length (API = trust
+    # boundary, фронт тримит но прямой PATCH мог бы записать пустую карточку).
+    model_config = ConfigDict(str_strip_whitespace=True)
     tab_id: uuid.UUID | None = None
     enabled: bool | None = None
     cost_cap_usd: Decimal | None = Field(default=None, ge=Decimal("0"))
+    # Редактирование карточки агента (колонки заполнены из manifest при
+    # создании, но админ может править без пересборки версии).
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    icon: str | None = Field(default=None, max_length=16)
+    short_description: str | None = Field(default=None, min_length=1, max_length=2000)

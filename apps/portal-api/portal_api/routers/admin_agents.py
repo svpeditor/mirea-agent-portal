@@ -239,10 +239,18 @@ async def update_agent_endpoint(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ) -> AgentAdminOut:
-    update_kwargs: dict = {"tab_id": payload.tab_id, "enabled": payload.enabled}
-    # cost_cap_usd: если поле явно в payload (включая null), пробрасываем.
+    update_kwargs: dict = {
+        "tab_id": payload.tab_id,
+        "enabled": payload.enabled,
+        "name": payload.name,
+        "short_description": payload.short_description,
+    }
+    # cost_cap_usd / icon: если поле явно в payload (включая null), пробрасываем
+    # (Ellipsis-семантика в сервисе = «не менять»).
     if "cost_cap_usd" in payload.model_fields_set:
         update_kwargs["cost_cap_usd"] = payload.cost_cap_usd
+    if "icon" in payload.model_fields_set:
+        update_kwargs["icon"] = payload.icon
     agent = await agent_service.update_agent(db, agent_id, **update_kwargs)
     ip, ua = audit_service.request_meta(request)
     await audit_service.log_action(
@@ -251,7 +259,7 @@ async def update_agent_endpoint(
         action=Action.AGENT_UPDATE,
         resource_type="agent",
         resource_id=str(agent_id),
-        payload=payload.model_dump(exclude_none=True, mode="json"),
+        payload=payload.model_dump(include=payload.model_fields_set, mode="json"),
         ip=ip,
         user_agent=ua,
     )

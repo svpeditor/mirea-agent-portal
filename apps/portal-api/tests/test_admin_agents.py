@@ -333,6 +333,64 @@ async def test_patch_agent_move_tab(
 
 
 @pytest.mark.asyncio
+async def test_patch_agent_edit_card_fields(
+    db: AsyncSession,
+    admin_client: AsyncClient,
+    admin_user: User,
+) -> None:
+    """Админ правит name/icon/short_description без пересборки версии."""
+    await _clear_tabs(db)
+    tab = await make_tab(db, slug="ed", name="Ed", order_idx=1)
+    agent = await make_agent(
+        db, slug="editable", tab_id=tab.id, created_by_user_id=admin_user.id,
+    )
+    await db.commit()
+
+    resp = await admin_client.patch(
+        f"/api/admin/agents/{agent.id}",
+        json={
+            "name": "Новое имя",
+            "icon": "🧪",
+            "short_description": "Обновлённое описание",
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["name"] == "Новое имя"
+    assert body["icon"] == "🧪"
+    assert body["short_description"] == "Обновлённое описание"
+
+    res = await db.execute(select(Agent).where(Agent.id == agent.id))
+    fresh = res.scalar_one()
+    await db.refresh(fresh)
+    assert fresh.name == "Новое имя"
+    assert fresh.icon == "🧪"
+    assert fresh.short_description == "Обновлённое описание"
+    assert fresh.tab_id == tab.id  # не тронут
+
+
+@pytest.mark.asyncio
+async def test_patch_agent_rejects_blank_name(
+    db: AsyncSession,
+    admin_client: AsyncClient,
+    admin_user: User,
+) -> None:
+    """Пробельное имя/описание не должно пройти (strip + min_length)."""
+    await _clear_tabs(db)
+    tab = await make_tab(db, slug="bl", name="Bl", order_idx=1)
+    agent = await make_agent(
+        db, slug="blankcard", tab_id=tab.id, created_by_user_id=admin_user.id,
+    )
+    await db.commit()
+
+    resp = await admin_client.patch(
+        f"/api/admin/agents/{agent.id}",
+        json={"name": "   "},
+    )
+    assert resp.status_code == 422, resp.text
+
+
+@pytest.mark.asyncio
 async def test_patch_agent_enable_without_current_version_409(
     db: AsyncSession,
     admin_client: AsyncClient,
