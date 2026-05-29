@@ -273,6 +273,10 @@ async def delete_agent_endpoint(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ) -> Response:
+    # Снимаем slug до удаления — soft-delete не возвращает агента, но в аудите
+    # хочется человекочитаемую запись.
+    agent = await agent_service.get_agent(db, agent_id)
+    slug = agent.slug
     await agent_service.delete_agent(db, agent_id)
     ip, ua = audit_service.request_meta(request)
     await audit_service.log_action(
@@ -281,6 +285,7 @@ async def delete_agent_endpoint(
         action=Action.AGENT_DELETE,
         resource_type="agent",
         resource_id=str(agent_id),
+        payload={"soft": True, "slug": slug},
         ip=ip,
         user_agent=ua,
     )

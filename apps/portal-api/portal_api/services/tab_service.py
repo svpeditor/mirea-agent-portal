@@ -112,7 +112,11 @@ async def delete_tab(session: AsyncSession, tab_id: uuid.UUID) -> None:
     if tab.is_system:
         raise TabIsSystemError()
 
-    count_stmt = select(func.count()).select_from(Agent).where(Agent.tab_id == tab_id)
+    count_stmt = (
+        select(func.count())
+        .select_from(Agent)
+        .where(Agent.tab_id == tab_id, Agent.deleted_at.is_(None))
+    )
     count = (await session.execute(count_stmt)).scalar_one()
     if count > 0:
         raise TabNotEmptyError()

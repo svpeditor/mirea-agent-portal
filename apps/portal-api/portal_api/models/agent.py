@@ -39,3 +39,8 @@ class Agent(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+    # Soft-delete: NULL = жив, не-NULL = удалён (hard-delete небезопасен из-за
+    # финансовых FK на jobs/llm_usage_logs).
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None
+    )

@@ -30,6 +30,7 @@ export const MESSAGES_RU: Record<string, string> = {
   agent_not_ready: 'Агент ещё собирается. Попробуй через минуту.',
   agent_not_found: 'Агент не найден.',
   agent_disabled: 'Агент временно отключён.',
+  NO_READY_VERSION: "Сначала назначьте текущую версию (кнопка 'Сделать текущей' у готовой версии).",
   job_already_terminal: 'Задача уже завершена.',
   cannot_cancel: 'Эту задачу нельзя отменить (уже завершена).',
   invalid_input: 'Неверные параметры запуска.',

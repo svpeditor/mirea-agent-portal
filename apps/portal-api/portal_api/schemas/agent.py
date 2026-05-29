@@ -61,6 +61,7 @@ class AgentAdminOut(BaseModel):
     cost_cap_usd: Decimal | None = None
     created_at: datetime
     updated_at: datetime
+    deleted_at: datetime | None = None
     latest_version: AgentLatestVersionAdminBrief | None = None
 
 

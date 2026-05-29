@@ -59,7 +59,13 @@ async def create_cron_job(
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ) -> CronJobAdminOut:
-    agent = await db.get(Agent, payload.agent_id)
+    agent = (
+        await db.execute(
+            sa.select(Agent).where(
+                Agent.id == payload.agent_id, Agent.deleted_at.is_(None)
+            )
+        )
+    ).scalar_one_or_none()
     if agent is None:
         raise HTTPException(status_code=404, detail={"error": {"code": "AGENT_NOT_FOUND"}})
     if agent.current_version_id is None:

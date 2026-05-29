@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class AgentVersionListItemOut(BaseModel):
@@ -20,7 +20,17 @@ class AgentVersionListItemOut(BaseModel):
     build_started_at: datetime | None
     build_finished_at: datetime | None
     build_error: str | None
+    build_log: str | None = None
     is_current: bool = False
+
+    @field_validator("build_log")
+    @classmethod
+    def _truncate_log(cls, v: str | None) -> str | None:
+        # build_log бывает большим (вывод docker build, до ~1 МБ), поэтому
+        # отдаём только хвост лога, чтобы показать причину провала.
+        if v and len(v) > 4000:
+            return "...(показан хвост лога)\n" + v[-4000:]
+        return v
 
 
 class AgentVersionDetailOut(BaseModel):

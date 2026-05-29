@@ -63,11 +63,17 @@ def load_and_validate_manifest(
                 "llm_models_empty",
                 "runtime.llm.models must be a non-empty list",
             )
-        for model in manifest.runtime.llm.models:
-            if model not in allowed_llm_models:
-                raise BuildError(
-                    "model_not_allowed",
-                    f"model {model!r} is not in global whitelist {allowed_llm_models}",
-                )
+        disallowed = [
+            model for model in manifest.runtime.llm.models if model not in allowed_llm_models
+        ]
+        if disallowed:
+            disallowed_str = ", ".join(f"'{model}'" for model in disallowed)
+            allowed_str = ", ".join(allowed_llm_models) if allowed_llm_models else "(список пуст)"
+            noun = "Модель" if len(disallowed) == 1 else "Модели"
+            verb = "не разрешена" if len(disallowed) == 1 else "не разрешены"
+            raise BuildError(
+                "model_not_allowed",
+                f"{noun} {disallowed_str} {verb}. Разрешённые модели: {allowed_str}.",
+            )
 
     return manifest

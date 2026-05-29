@@ -23,13 +23,12 @@ from typing import Any
 import yaml
 from portal_sdk.manifest import Manifest
 from pydantic import ValidationError
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from portal_api.config import Settings
 from portal_api.core.exceptions import (
-    AgentHasVersionsError,
     AgentNotFoundError,
     AgentSlugTakenError,
     BaseImageNotAllowedError,
@@ -213,7 +212,7 @@ async def list_admin_agents(
     встреченную для каждого agent_id, поскольку запрос идёт ORDER BY
     agent_id, created_at DESC).
     """
-    stmt = select(Agent)
+    stmt = select(Agent).where(Agent.deleted_at.is_(None))
     if tab_id is not None:
         stmt = stmt.where(Agent.tab_id == tab_id)
     if enabled is not None:
@@ -240,8 +239,14 @@ async def list_admin_agents(
 
 
 async def get_agent(session: AsyncSession, agent_id: uuid.UUID) -> Agent:
-    """Найти агента по id или кинуть AgentNotFoundError."""
-    agent = await session.get(Agent, agent_id)
+    """Найти живого агента по id или кинуть AgentNotFoundError.
+
+    Soft-deleted агенты (deleted_at IS NOT NULL) трактуются как несуществующие.
+    """
+    stmt = select(Agent).where(
+        Agent.id == agent_id, Agent.deleted_at.is_(None)
+    )
+    agent = (await session.execute(stmt)).scalar_one_or_none()
     if agent is None:
         raise AgentNotFoundError()
     return agent
@@ -301,7 +306,11 @@ async def list_public_agents(session: AsyncSession) -> list[tuple[Agent, AgentVe
         select(Agent, AgentVersion, Tab)
         .join(AgentVersion, AgentVersion.id == Agent.current_version_id)
         .join(Tab, Tab.id == Agent.tab_id)
-        .where(Agent.enabled.is_(True), Agent.current_version_id.is_not(None))
+        .where(
+            Agent.enabled.is_(True),
+            Agent.current_version_id.is_not(None),
+            Agent.deleted_at.is_(None),
+        )
         .order_by(Agent.name)
     )
     return list((await session.execute(stmt)).all())  # type: ignore[arg-type]
@@ -318,6 +327,7 @@ async def get_public_agent_by_slug(
         .where(
             Agent.enabled.is_(True),
             Agent.current_version_id.is_not(None),
+            Agent.deleted_at.is_(None),
             Agent.slug == slug,
         )
     )
@@ -328,18 +338,16 @@ async def get_public_agent_by_slug(
 
 
 async def delete_agent(session: AsyncSession, agent_id: uuid.UUID) -> None:
-    """Удалить агента.
+    """Soft-delete агента: пометить deleted_at + снять enabled.
 
-    Если у агента есть хотя бы одна версия → AgentHasVersionsError (409).
+    Hard-delete небезопасен — jobs/llm_usage_logs хранят финансовые записи
+    (cost_usd) с FK RESTRICT/NO ACTION на агента и его версии. Поэтому удаление
+    работает и для агентов С версиями: ставим deleted_at=now и enabled=False
+    в одной транзакции, агент исчезает из admin-списка и публичного каталога.
+
+    Уже удалённый агент трактуется как 404 (get_agent уже фильтрует deleted_at).
     """
     agent = await get_agent(session, agent_id)
-    count_stmt = (
-        select(func.count())
-        .select_from(AgentVersion)
-        .where(AgentVersion.agent_id == agent_id)
-    )
-    count = (await session.execute(count_stmt)).scalar_one()
-    if count > 0:
-        raise AgentHasVersionsError()
-    await session.delete(agent)
+    agent.deleted_at = datetime.now(UTC)
+    agent.enabled = False
     await session.flush()

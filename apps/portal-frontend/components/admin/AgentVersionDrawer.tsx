@@ -5,11 +5,15 @@ import { useQuery } from '@tanstack/react-query';
 import { DrawerSheet } from './DrawerSheet';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { CreateAgentVersionForm } from './CreateAgentVersionForm';
 import { apiClient } from '@/lib/api/client';
 import { formatDate } from '@/lib/format';
 import { toast } from 'sonner';
 import { mapApiError } from '@/lib/api/errors';
+import { Trash } from 'lucide-react';
 
 interface AgentVersion {
   id: string;
@@ -20,6 +24,7 @@ interface AgentVersion {
   build_started_at: string | null;
   build_finished_at: string | null;
   build_error: string | null;
+  build_log: string | null;
   is_current: boolean;
 }
 
@@ -47,6 +52,7 @@ export function AgentVersionDrawer({
 }: Props) {
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
+  const [settingCurrentId, setSettingCurrentId] = useState<string | null>(null);
   const [capInput, setCapInput] = useState(costCapUsd ?? '');
   const [savingCap, setSavingCap] = useState(false);
   const [cardName, setCardName] = useState(agentName);
@@ -107,6 +113,33 @@ export function AgentVersionDrawer({
     }
   }
 
+  async function setCurrent(versionId: string) {
+    setSettingCurrentId(versionId);
+    try {
+      await apiClient(`/api/admin/agent_versions/${versionId}/set_current`, {
+        method: 'POST',
+      });
+      toast.success('Версия назначена текущей');
+      await refetch();
+      router.refresh();
+    } catch (err) {
+      toast.error(mapApiError(err));
+    } finally {
+      setSettingCurrentId(null);
+    }
+  }
+
+  async function deleteAgent() {
+    try {
+      await apiClient(`/api/admin/agents/${agentId}`, { method: 'DELETE' });
+      toast.success('Агент удалён');
+      router.push('/admin/agents');
+      router.refresh();
+    } catch (err) {
+      toast.error(mapApiError(err));
+    }
+  }
+
   async function saveCap() {
     setSavingCap(true);
     try {
@@ -143,6 +176,7 @@ export function AgentVersionDrawer({
             <Button variant="ghost" size="sm" onClick={toggleEnabled} className="ml-2">
               {enabled ? 'Отключить' : 'Включить'}
             </Button>
+            <DeleteAgentDialog agentSlug={agentSlug} onConfirm={deleteAgent} />
           </div>
           <div className="flex items-baseline gap-2 pt-2">
             <span className="text-[color:var(--color-text-secondary)]">лимит, $:</span>
@@ -267,12 +301,23 @@ export function AgentVersionDrawer({
                   ref: <code className="font-mono">{v.git_ref}</code> · manifest{' '}
                   <code className="font-mono">{v.manifest_version}</code>
                 </div>
+                {v.status === 'ready' && !v.is_current && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="mt-2"
+                    onClick={() => setCurrent(v.id)}
+                    disabled={settingCurrentId === v.id}
+                  >
+                    {settingCurrentId === v.id ? 'Назначаю...' : 'Сделать текущей'}
+                  </Button>
+                )}
                 {v.build_error && (
                   <details className="mt-2">
                     <summary className="cursor-pointer text-xs text-[color:var(--color-error)]">
-                      Ошибка build
+                      Ошибка build: {v.build_error}
                     </summary>
-                    <pre className="mt-1 overflow-x-auto whitespace-pre-wrap text-xs">{v.build_error}</pre>
+                    <pre className="mt-1 overflow-x-auto whitespace-pre-wrap text-xs">{v.build_log || v.build_error}</pre>
                   </details>
                 )}
               </li>
@@ -286,5 +331,74 @@ export function AgentVersionDrawer({
         </div>
       </div>
     </DrawerSheet>
+  );
+}
+
+function DeleteAgentDialog({
+  agentSlug,
+  onConfirm,
+}: {
+  agentSlug: string;
+  onConfirm: () => Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [confirmSlug, setConfirmSlug] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleConfirm(e: React.FormEvent) {
+    e.preventDefault();
+    if (confirmSlug !== agentSlug) return;
+    setDeleting(true);
+    try {
+      await onConfirm();
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) setConfirmSlug('');
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button variant="destructive" size="sm" className="ml-2">
+          <Trash className="mr-2 h-4 w-4" />
+          Удалить агента
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Удалить агента</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleConfirm} className="space-y-3">
+          <p className="text-sm text-[color:var(--color-text-secondary)]">
+            Это действие удалит агента вместе с его историей. Чтобы подтвердить, введите slug агента:{' '}
+            <code className="font-mono">{agentSlug}</code>
+          </p>
+          <div>
+            <Label htmlFor="confirm-slug">Slug</Label>
+            <Input
+              id="confirm-slug"
+              value={confirmSlug}
+              onChange={(e) => setConfirmSlug(e.target.value)}
+              placeholder={agentSlug}
+              autoComplete="off"
+            />
+          </div>
+          <Button
+            type="submit"
+            variant="destructive"
+            className="w-full"
+            disabled={confirmSlug !== agentSlug || deleting}
+          >
+            {deleting ? 'Удаляю...' : 'Удалить агента'}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

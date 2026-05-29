@@ -420,11 +420,16 @@ async def test_patch_agent_enable_without_current_version_409(
 
 
 @pytest.mark.asyncio
-async def test_delete_agent_with_versions_409(
+async def test_delete_agent_with_versions_soft_succeeds(
     db: AsyncSession,
     admin_client: AsyncClient,
     admin_user: User,
 ) -> None:
+    """Soft-delete: даже агент С версиями удаляется (204), не 409.
+
+    Hard-delete нельзя — jobs/llm_usage_logs держат финансовые FK. Вместо этого
+    ставим deleted_at + enabled=False; строка агента и версии остаются в БД.
+    """
     await _clear_tabs(db)
     tab = await make_tab(db, slug="t1", name="Tab1", order_idx=1)
     agent = await make_agent(
@@ -432,6 +437,7 @@ async def test_delete_agent_with_versions_409(
         slug="hasversions",
         tab_id=tab.id,
         created_by_user_id=admin_user.id,
+        enabled=True,
     )
     await make_agent_version(
         db,
@@ -441,8 +447,19 @@ async def test_delete_agent_with_versions_409(
     await db.commit()
 
     resp = await admin_client.delete(f"/api/admin/agents/{agent.id}")
-    assert resp.status_code == 409, resp.text
-    assert resp.json()["error"]["code"] == "AGENT_HAS_VERSIONS"
+    assert resp.status_code == 204, resp.text
+
+    # Строка осталась, но помечена deleted_at + enabled снят. Читаем колонками
+    # (а не ORM-сущность), чтобы не словить refresh истёкшего объекта из
+    # identity-map в sync-контексте (MissingGreenlet).
+    row = (
+        await db.execute(
+            select(Agent.deleted_at, Agent.enabled).where(Agent.id == agent.id)
+        )
+    ).one_or_none()
+    assert row is not None
+    assert row.deleted_at is not None
+    assert row.enabled is False
 
 
 @pytest.mark.asyncio
@@ -464,8 +481,115 @@ async def test_delete_agent_no_versions_204(
     resp = await admin_client.delete(f"/api/admin/agents/{agent.id}")
     assert resp.status_code == 204, resp.text
 
-    res = await db.execute(select(Agent).where(Agent.id == agent.id))
-    assert res.scalar_one_or_none() is None
+    # Soft-delete: строка остаётся, но помечена deleted_at. Читаем колонкой,
+    # чтобы не триггерить refresh ORM-объекта в sync-контексте (MissingGreenlet).
+    row = (
+        await db.execute(
+            select(Agent.deleted_at).where(Agent.id == agent.id)
+        )
+    ).one_or_none()
+    assert row is not None
+    assert row.deleted_at is not None
+
+
+@pytest.mark.asyncio
+async def test_delete_agent_already_deleted_404(
+    db: AsyncSession,
+    admin_client: AsyncClient,
+    admin_user: User,
+) -> None:
+    """Повторное удаление уже soft-deleted агента — 404 (идемпотентность)."""
+    await _clear_tabs(db)
+    tab = await make_tab(db, slug="t1", name="Tab1", order_idx=1)
+    agent = await make_agent(
+        db,
+        slug="twice",
+        tab_id=tab.id,
+        created_by_user_id=admin_user.id,
+    )
+    await db.commit()
+
+    first = await admin_client.delete(f"/api/admin/agents/{agent.id}")
+    assert first.status_code == 204, first.text
+
+    second = await admin_client.delete(f"/api/admin/agents/{agent.id}")
+    assert second.status_code == 404, second.text
+    assert second.json()["error"]["code"] == "AGENT_NOT_FOUND"
+
+
+@pytest.mark.asyncio
+async def test_deleted_agent_hidden_from_admin_list(
+    db: AsyncSession,
+    admin_client: AsyncClient,
+    admin_user: User,
+) -> None:
+    """После soft-delete агент пропадает из GET /api/admin/agents."""
+    await _clear_tabs(db)
+    tab = await make_tab(db, slug="t1", name="Tab1", order_idx=1)
+    alive = await make_agent(
+        db, slug="alive", tab_id=tab.id, created_by_user_id=admin_user.id,
+    )
+    doomed = await make_agent(
+        db, slug="doomed", tab_id=tab.id, created_by_user_id=admin_user.id,
+    )
+    await db.commit()
+
+    resp = await admin_client.delete(f"/api/admin/agents/{doomed.id}")
+    assert resp.status_code == 204, resp.text
+
+    listing = await admin_client.get("/api/admin/agents")
+    assert listing.status_code == 200, listing.text
+    slugs = {a["slug"] for a in listing.json()}
+    assert "alive" in slugs
+    assert "doomed" not in slugs
+    assert str(alive.id) in {a["id"] for a in listing.json()}
+
+
+@pytest.mark.asyncio
+async def test_deleted_agent_hidden_from_public_catalog(
+    db: AsyncSession,
+    admin_client: AsyncClient,
+    admin_user: User,
+) -> None:
+    """После soft-delete агент пропадает и из публичного каталога, и из /api/agents.
+
+    Всё гоняем через admin_client: фикстуры admin_client/user_client делят один
+    cookie-jar, поэтому одновременно в тесте их использовать нельзя (последний
+    логин затирает cookie). Фильтрация публичного каталога от роли не зависит
+    (enabled + current_version + deleted_at), а админ проходит get_current_user
+    для /api/agents и публичный /api/public/catalog auth не требует.
+    """
+    await _clear_tabs(db)
+    tab = await make_tab(db, slug="pc-del", name="Каталог", order_idx=1)
+    agent = await make_agent(
+        db, slug="pub-doomed", name="Публичный", tab_id=tab.id,
+        created_by_user_id=admin_user.id, enabled=True,
+    )
+    version = await make_agent_version(
+        db, agent_id=agent.id, created_by_user_id=admin_user.id, status="ready",
+    )
+    agent.current_version_id = version.id
+    await db.commit()
+
+    # До удаления — виден в каталоге и в /api/agents.
+    pre_catalog = await admin_client.get("/api/public/catalog")
+    assert "pub-doomed" in {a["slug"] for a in pre_catalog.json()["agents"]}
+    pre_agents = await admin_client.get("/api/agents")
+    assert "pub-doomed" in {a["slug"] for a in pre_agents.json()}
+
+    resp = await admin_client.delete(f"/api/admin/agents/{agent.id}")
+    assert resp.status_code == 204, resp.text
+
+    post_catalog = await admin_client.get("/api/public/catalog")
+    assert "pub-doomed" not in {a["slug"] for a in post_catalog.json()["agents"]}
+    assert post_catalog.json()["total_agents"] == 0
+
+    post_agents = await admin_client.get("/api/agents")
+    assert "pub-doomed" not in {a["slug"] for a in post_agents.json()}
+
+    # Прямой GET по slug — тоже 404.
+    detail = await admin_client.get("/api/agents/pub-doomed")
+    assert detail.status_code == 404, detail.text
 
 
 # --- helpers ---
