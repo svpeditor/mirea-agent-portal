@@ -1,4 +1,4 @@
-# ruff: noqa: N818, RUF001
+# ruff: noqa: N818, RUF001, RUF002
 """AppError + коды ошибок согласно Спеку 1.2.1, раздел 8."""
 from __future__ import annotations
 
@@ -379,6 +379,47 @@ class NotImplementedAppError(AppError):
 
     def __init__(self, message: str = "Endpoint not implemented") -> None:
         super().__init__(code="not_implemented", message=message, status_code=501)
+
+
+class DatasetAccessDeniedError(AppError):
+    """У агента нет нужного гранта (read/write) на датасет в манифесте."""
+
+    def __init__(self, message: str = "Нет доступа к этому датасету.") -> None:
+        super().__init__(code="dataset_access_denied", message=message, status_code=403)
+
+
+class DatasetRecordTooLargeError(AppError):
+    """Запись превышает лимит размера."""
+
+    def __init__(self, message: str = "Запись слишком большая.") -> None:
+        super().__init__(
+            code="dataset_record_too_large", message=message, status_code=413
+        )
+
+
+class DatasetFullError(AppError):
+    """Достигнут лимит числа записей в датасете."""
+
+    def __init__(self, message: str = "Достигнут лимит числа записей в датасете.") -> None:
+        super().__init__(code="dataset_full", message=message, status_code=409)
+
+
+class DatasetRecordNotFoundError(AppError):
+    """Запись по ключу не найдена."""
+
+    def __init__(self, message: str = "Запись не найдена.") -> None:
+        super().__init__(
+            code="dataset_record_not_found", message=message, status_code=404
+        )
+
+
+class DatasetNotFoundError(AppError):
+    """Датасет не найден (для admin-просмотра)."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            code="DATASET_NOT_FOUND", message="Датасет не найден.", status_code=404
+        )
 
 
 class LoginRateLimitedError(AppError):

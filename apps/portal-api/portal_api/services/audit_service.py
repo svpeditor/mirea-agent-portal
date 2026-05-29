@@ -136,3 +136,5 @@ class A:
     TAB_UPDATE = "tab.update"
     TAB_DELETE = "tab.delete"
     LLM_SETTINGS_UPDATE = "llm_settings.update"
+    DATASET_DELETE = "dataset.delete"
+    DATASET_RECORD_DELETE = "dataset.record_delete"

@@ -52,6 +52,34 @@
       "title": "CheckboxField",
       "type": "object"
     },
+    "DatasetGrant": {
+      "additionalProperties": false,
+      "description": "Доступ агента к общей базе данных портала.\n\nАгент объявляет, к каким датасетам (по slug) и с какими правами он\nобращается. Это граница безопасности: писать/читать можно ТОЛЬКО\nобъявленные здесь датасеты. Один агент наполняет (write), другие читают\n(read); readwrite = и то, и другое.",
+      "properties": {
+        "access": {
+          "default": "read",
+          "enum": [
+            "read",
+            "write",
+            "readwrite"
+          ],
+          "title": "Access",
+          "type": "string"
+        },
+        "slug": {
+          "maxLength": 80,
+          "minLength": 2,
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "title": "Slug",
+          "type": "string"
+        }
+      },
+      "required": [
+        "slug"
+      ],
+      "title": "DatasetGrant",
+      "type": "object"
+    },
     "DateField": {
       "additionalProperties": false,
       "properties": {
@@ -468,6 +496,13 @@
     "RuntimeConfig": {
       "additionalProperties": false,
       "properties": {
+        "datasets": {
+          "items": {
+            "$ref": "#/$defs/DatasetGrant"
+          },
+          "title": "Datasets",
+          "type": "array"
+        },
         "docker": {
           "$ref": "#/$defs/DockerConfig"
         },

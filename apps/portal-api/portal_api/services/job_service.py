@@ -23,7 +23,8 @@ async def create_job(
 ) -> tuple[Job, str | None]:
     """Создать job; raises AgentNotFoundError / AgentNotReadyError / QuotaExhaustedError.
 
-    Returns (job, ephemeral_plaintext) — ephemeral_plaintext is None if agent has no runtime.llm.
+    Returns (job, ephemeral_plaintext) — ephemeral_plaintext is None if agent
+    declares neither runtime.llm nor runtime.datasets (no sandbox-api access).
     """
     stmt = (
         select(Agent, AgentVersion)
@@ -38,7 +39,11 @@ async def create_job(
         raise AgentNotReadyError()
 
     manifest = version.manifest_jsonb or {}
-    runtime_llm = (manifest.get("runtime") or {}).get("llm")
+    runtime = manifest.get("runtime") or {}
+    runtime_llm = runtime.get("llm")
+    runtime_datasets = runtime.get("datasets")
+    # Токен нужен для любого доступа к sandbox-api: LLM-прокси или общая БД.
+    needs_token = bool(runtime_llm) or bool(runtime_datasets)
     ephemeral_plaintext: str | None = None
 
     if runtime_llm:
@@ -59,8 +64,8 @@ async def create_job(
     session.add(job)
     await session.flush()
 
-    if runtime_llm:
-        max_runtime = (manifest.get("runtime") or {}).get("limits", {}).get("max_runtime_minutes", 60)
+    if needs_token:
+        max_runtime = runtime.get("limits", {}).get("max_runtime_minutes", 60)
         ttl = timedelta(minutes=int(max_runtime) + 5)
         ephemeral_plaintext, _ = eph_svc.generate()
         await eph_svc.insert(

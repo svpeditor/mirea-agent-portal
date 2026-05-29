@@ -96,14 +96,16 @@ def run_job(payload: dict | str) -> None:
             params = row.params_jsonb
             agent_slug = row.agent_slug  # noqa: F841 — available for future use
 
-        # 1b. Построить LlmRuntimeConfig если manifest содержит runtime.llm
-        raw_manifest = row.manifest_jsonb or {}
-        runtime_llm = (raw_manifest.get("runtime") or {}).get("llm")
-        if runtime_llm and ephemeral_token:
+        # 1b. Построить sandbox-конфиг, если у джоба есть ephemeral-токен.  # noqa: RUF003
+        # Токен выдаётся api при runtime.llm и/или runtime.datasets, поэтому
+        # его наличие = агенту нужен доступ к portal-api (LLM-прокси/общая БД).  # noqa: RUF003
+        if ephemeral_token:
             llm_config = LlmRuntimeConfig(
                 ephemeral_token=ephemeral_token,
                 agents_network_name=settings.llm_agents_network_name,
                 proxy_base_url=settings.llm_proxy_base_url,
+                api_base_url=settings.agent_api_base_url,
+                llm_enabled=manifest.runtime.llm is not None,
             )
 
         # 2. Материализовать inputs из FileStore (local = читать с диска)  # noqa: RUF003

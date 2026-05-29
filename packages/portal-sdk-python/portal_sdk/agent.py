@@ -1,5 +1,5 @@
 """Публичный API SDK — класс Agent."""
-# ruff: noqa: RUF001
+# ruff: noqa: RUF001, RUF002
 from __future__ import annotations
 
 import json
@@ -90,6 +90,19 @@ class Agent:
         агента через SDK — для этого есть `os.environ` напрямую.
         """
         return MappingProxyType(os.environ)
+
+    # --- Общая база данных ---
+
+    def dataset(self, slug: str) -> Any:
+        """Доступ к общей базе данных портала (датасету по slug).
+
+        Права (read/write) объявляются в manifest.yaml -> runtime.datasets.
+        Возвращает DatasetClient с методами put/get/list/delete. Один агент
+        наполняет базу, другие читают.
+        """
+        from portal_sdk.datasets import DatasetClient
+
+        return DatasetClient(slug)
 
     # --- События прогресса ---
 

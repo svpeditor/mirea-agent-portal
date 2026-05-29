@@ -72,8 +72,14 @@ def run_agent_container(
         network_kwargs: dict[str, Any] = {"network_mode": "none"}
     else:
         network_kwargs = {"network": llm_config.agents_network_name}
-        env["OPENROUTER_API_KEY"] = llm_config.ephemeral_token
-        env["OPENROUTER_BASE_URL"] = llm_config.proxy_base_url
+        # Sandbox-api (общая БД и пр.): тот же токен, отдельные понятные env.
+        env["PORTAL_AGENT_TOKEN"] = llm_config.ephemeral_token
+        env["PORTAL_API_BASE_URL"] = llm_config.api_base_url
+        # OPENROUTER_*-кредл выдаём только LLM-агентам (dataset-only обходится
+        # без него), чтобы не плодить лишний доступ.
+        if llm_config.llm_enabled:
+            env["OPENROUTER_API_KEY"] = llm_config.ephemeral_token
+            env["OPENROUTER_BASE_URL"] = llm_config.proxy_base_url
 
     container = client.containers.run(
         image=image_tag,

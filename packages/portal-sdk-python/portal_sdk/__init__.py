@@ -1,5 +1,6 @@
 """SDK для агентов платформы AI-агентов кафедры МИРЭА."""
 from portal_sdk.agent import Agent
+from portal_sdk.datasets import DatasetClient, DatasetError
 from portal_sdk.events import (
     Artifact,
     ErrorEvent,
@@ -45,6 +46,8 @@ __all__ = [
     "Artifact",
     "CategoryStrict",
     "CheckboxField",
+    "DatasetClient",
+    "DatasetError",
     "DateField",
     "DockerConfig",
     "ErrorEvent",

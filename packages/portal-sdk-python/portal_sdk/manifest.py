@@ -1,4 +1,5 @@
 """Pydantic-модели для manifest.yaml — паспорта агента."""
+# ruff: noqa: RUF002
 from __future__ import annotations
 
 from enum import StrEnum
@@ -10,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class CategoryStrict(StrEnum):
-    """Вкладки портала. Должно совпадать с tab.slug в БД портала."""  # noqa: RUF002
+    """Вкладки портала. Должно совпадать с tab.slug в БД портала."""
 
     SCIENCE = "научная-работа"
     EDUCATION = "учебная"
@@ -182,11 +183,34 @@ class LimitsConfig(BaseModel):
     max_cpu_cores: float = 1.0
 
 
+class DatasetGrant(BaseModel):
+    """Доступ агента к общей базе данных портала.
+
+    Агент объявляет, к каким датасетам (по slug) и с какими правами он
+    обращается. Это граница безопасности: писать/читать можно ТОЛЬКО
+    объявленные здесь датасеты. Один агент наполняет (write), другие читают
+    (read); readwrite = и то, и другое.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+    slug: str = Field(min_length=2, max_length=80, pattern=r"^[a-z][a-z0-9-]*$")
+    access: Literal["read", "write", "readwrite"] = "read"
+
+
 class RuntimeConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     docker: DockerConfig
     llm: LLMConfig | None = None
     limits: LimitsConfig = Field(default_factory=LimitsConfig)
+    datasets: list[DatasetGrant] = Field(default_factory=list)
+
+    @field_validator("datasets")
+    @classmethod
+    def _no_dup_dataset_slugs(cls, v: list[DatasetGrant]) -> list[DatasetGrant]:
+        slugs = [g.slug for g in v]
+        if len(slugs) != len(set(slugs)):
+            raise ValueError(f"Дубли runtime.datasets.slug: {slugs}")
+        return v
 
 
 # --- Корневой манифест ---

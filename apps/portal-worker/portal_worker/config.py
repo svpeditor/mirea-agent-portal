@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     llm_proxy_base_url: str = "http://api:8000/llm/v1"
     llm_agents_network_name: str = "portal-agents-net"
     llm_allowed_models: Annotated[list[str], NoDecode] = []
+    # Корень portal-api для sandbox-эндпоинтов (общая БД и пр.), виден из
+    # agents-network. Агенту пробрасывается как PORTAL_API_BASE_URL.
+    agent_api_base_url: str = "http://api:8000"
 
     @field_validator("llm_allowed_models", mode="before")
     @classmethod

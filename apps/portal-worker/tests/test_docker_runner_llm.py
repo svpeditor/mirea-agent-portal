@@ -61,6 +61,7 @@ def test_with_llm_joins_agents_network_and_sets_env(common_args) -> None:
         ephemeral_token="por-job-deadbeefdeadbeefdeadbeefdeadbeef",
         agents_network_name="portal-agents-net",
         proxy_base_url="http://api:8000/llm/v1",
+        api_base_url="http://api:8000",
     )
 
     with patch("portal_worker.runner.docker_runner.docker.from_env", return_value=client):
@@ -72,4 +73,34 @@ def test_with_llm_joins_agents_network_and_sets_env(common_args) -> None:
     env = call_kwargs.get("environment", {})
     assert env["OPENROUTER_API_KEY"] == cfg.ephemeral_token
     assert env["OPENROUTER_BASE_URL"] == cfg.proxy_base_url
+    assert env["PORTAL_AGENT_TOKEN"] == cfg.ephemeral_token
+    assert env["PORTAL_API_BASE_URL"] == cfg.api_base_url
+
+
+def test_dataset_only_agent_gets_sandbox_token_but_no_openrouter(common_args) -> None:
+    """Dataset-only агент (llm_enabled=False): сеть + PORTAL_*, без OPENROUTER_*."""
+    container = MagicMock()
+    container.logs.return_value = iter([])
+    container.wait.return_value = {"StatusCode": 0}
+    client = MagicMock()
+    client.containers.run.return_value = container
+
+    cfg = LlmRuntimeConfig(
+        ephemeral_token="por-job-deadbeefdeadbeefdeadbeefdeadbeef",
+        agents_network_name="portal-agents-net",
+        proxy_base_url="http://api:8000/llm/v1",
+        api_base_url="http://api:8000",
+        llm_enabled=False,
+    )
+
+    with patch("portal_worker.runner.docker_runner.docker.from_env", return_value=client):
+        run_agent_container(**common_args, llm_config=cfg)
+
+    call_kwargs = client.containers.run.call_args.kwargs
+    assert call_kwargs.get("network") == "portal-agents-net"
+    env = call_kwargs.get("environment", {})
+    assert env["PORTAL_AGENT_TOKEN"] == cfg.ephemeral_token
+    assert env["PORTAL_API_BASE_URL"] == cfg.api_base_url
+    assert "OPENROUTER_API_KEY" not in env
+    assert "OPENROUTER_BASE_URL" not in env
     assert env["PARAMS_FILE"] == "/var/agent/params.json"

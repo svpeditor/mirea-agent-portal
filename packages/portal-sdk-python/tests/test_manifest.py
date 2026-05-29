@@ -125,3 +125,60 @@ def test_empty_outputs_rejected(fixtures_dir: Path) -> None:
     """Манифест без outputs — невалиден: агент обязан вернуть хотя бы один артефакт."""
     with pytest.raises(ValidationError):
         Manifest.from_yaml(fixtures_dir / "invalid_manifests" / "empty_outputs.yaml")
+
+
+def _manifest_with_runtime(runtime: dict) -> dict:
+    return {
+        "id": "ds-agent",
+        "name": "Агент",
+        "version": "1.0.0",
+        "category": "учебная",
+        "short_description": "Описание",
+        "outputs": [
+            {"id": "report", "type": "any", "label": "Результат", "filename": "out.txt"}
+        ],
+        "runtime": runtime,
+    }
+
+
+_DOCKER = {"base_image": "python:3.12-slim", "entrypoint": ["python", "run.py"]}
+
+
+def test_runtime_datasets_parsed() -> None:
+    data = _manifest_with_runtime({
+        "docker": _DOCKER,
+        "datasets": [
+            {"slug": "math-tasks", "access": "write"},
+            {"slug": "classifiers", "access": "read"},
+        ],
+    })
+    m = Manifest.model_validate(data)
+    assert [g.slug for g in m.runtime.datasets] == ["math-tasks", "classifiers"]
+    assert m.runtime.datasets[0].access == "write"
+
+
+def test_runtime_datasets_default_empty() -> None:
+    m = Manifest.model_validate(_manifest_with_runtime({"docker": _DOCKER}))
+    assert m.runtime.datasets == []
+
+
+def test_runtime_datasets_duplicate_slug_rejected() -> None:
+    data = _manifest_with_runtime({
+        "docker": _DOCKER,
+        "datasets": [
+            {"slug": "dup", "access": "read"},
+            {"slug": "dup", "access": "write"},
+        ],
+    })
+    with pytest.raises(ValidationError) as exc:
+        Manifest.model_validate(data)
+    assert "дубли" in str(exc.value).lower()
+
+
+def test_runtime_datasets_bad_access_rejected() -> None:
+    data = _manifest_with_runtime({
+        "docker": _DOCKER,
+        "datasets": [{"slug": "x", "access": "admin"}],
+    })
+    with pytest.raises(ValidationError):
+        Manifest.model_validate(data)
